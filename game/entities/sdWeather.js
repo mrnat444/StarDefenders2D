@@ -86,6 +86,7 @@ import sdBaseShieldingUnit from './sdBaseShieldingUnit.js';
 import sdStatusEffect from './sdStatusEffect.js';
 
 import sdRenderer from '../client/sdRenderer.js';
+import sdVestroid from './sdVestroid.js';
 
 class sdWeather extends sdEntity
 {
@@ -154,6 +155,7 @@ class sdWeather extends sdEntity
 		sdWeather.EVENT_PROTECT_SDBG_DRONE =	event_counter++; // 48
 		sdWeather.EVENT_VELOX_FORTIFIER =		event_counter++; // 49
 		sdWeather.EVENT_SOLAR_DISTRIBUTOR =		event_counter++; // 50
+		sdWeather.EVENT_VESTROIDS =				event_counter++; // 51
 		
 		sdWeather.supported_events = [];
 		for ( let i = 0; i < event_counter; i++ )
@@ -3471,6 +3473,19 @@ class sdWeather extends sdEntity
 				class: sdSolarMatterDistributor,
 				aerial: false
 				
+			});
+		}
+		if ( r === sdWeather.EVENT_VESTROIDS )
+		{
+			if ( sdVestroid.all_vestroids.length < 10 || sdWorld.server_config.aggressive_hibernation )
+			sdWeather.SimpleSpawner({
+
+				count: [ 1, 1 + Math.ceil( Math.random() * 2 * Math.max( 1, sdWorld.GetPlayingPlayersCount() * 0.5 ) ) ],
+				class: sdVestroid,
+				params: { type: ()=>{ return ~~( Math.random() * 2 ) } },
+				evalute_params: [ 'type' ],
+				
+				aerial: true
 			});
 		}
 	}

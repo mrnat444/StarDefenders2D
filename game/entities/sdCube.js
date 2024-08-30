@@ -25,6 +25,7 @@ import sdZektaronDreadnought from './sdZektaronDreadnought.js';
 
 
 import sdPathFinding from '../ai/sdPathFinding.js';
+import sdVestroid from './sdVestroid.js';
 
 class sdCube extends sdEntity
 {
@@ -790,6 +791,7 @@ class sdCube extends sdEntity
 					e.is( sdSetrDestroyer ) || 
 					e.is( sdSpider ) || 
 					e.is( sdOverlord ) ||
+					e.is( sdVestroid ) ||
 					e.is( sdZektaronDreadnought ) );
 	}
 	onThink( GSPEED ) // Class-specific, if needed
@@ -1081,6 +1083,7 @@ class sdCube extends sdEntity
 								 ( target.GetClass() === 'sdSpider' && target._hea > 0  && !sdCube.IsTargetFriendly( target, this ) ) ||
 								 ( target.GetClass() === 'sdDrone' && target._hea > 0  && !sdCube.IsTargetFriendly( target, this ) ) ||
 								 ( target.GetClass() === 'sdOverlord' && target.hea > 0  && !sdCube.IsTargetFriendly( target, this ) ) ||
+								 ( target.GetClass() === 'sdVestroid' && target.hea > 0  && !sdCube.IsTargetFriendly( target, this ) ) ||
 								 ( target.GetClass() === 'sdSetrDestroyer' && target.hea > 0  && !sdCube.IsTargetFriendly( target, this ) ) ||
 								( target.GetClass() === 'sdZektaronDreadnought' && target.hea > 0  && !sdCube.IsTargetFriendly( target, this ) )								 )
 							{
@@ -1336,6 +1339,9 @@ class sdCube extends sdEntity
 		return false;
 		
 		if ( ent.GetClass() === 'sdBot' )
+		return false;
+		
+		if ( ent.GetClass() === 'sdVestroid' )
 		return false;
 
 
