@@ -484,7 +484,7 @@ class sdCharacter extends sdEntity
 		sdCharacter.AI_MODEL_AGGRESSIVE = 5; // Has the AI aggressively charge their target.
 		sdCharacter.AI_MODEL_DISTANT = 6; // // Has the AI try to retreat from their target and maintain distance between them.
 		
-		sdCharacter.ghost_breath_delay = 10 * 30;
+		sdCharacter.ghost_breath_delay = 7 * 30;
 		
 		sdCharacter.unique_discovery_indexes = [];
 		
@@ -502,6 +502,10 @@ class sdCharacter extends sdEntity
 	
 		sdCharacter.starter_matter = 50;
 		sdCharacter.matter_required_to_destroy_command_center = 300; // Will be used to measure command centres' self-destruct if no characters with enough matter will showup near them
+		
+		sdCharacter.starter_energy = 30 * 3;
+		
+		sdCharacter.ghost_duration = 30 * 15; // 15 seconds
 		
 		sdCharacter.default_weapon_draw_time = 7;
 		
@@ -768,10 +772,159 @@ class sdCharacter extends sdEntity
 						'This '+t+' '+i_have_+''+( ( ent._hea || ent.hea || 0 ) <= 0 ? 'looks rather dead' : 'looks rather healthy' ),
 						t+' is right there',
 						'This day can\'t get any better with '+t+', can\'t it?',
+
+						'That\'s a '+( sdWorld.Dist2D_Vector( ent.sx, ent.sy ) > 5 ? 'fast moving ' : ( ent.sx || ent.sy ) > 0 ? 'slow moving ' : 'peaceful looking ')+t,
+						( ( ent._hitbox_x2 - ent.hitbox_x1 || 0 ) > ( this._hitbox_x2 - this.hitbox_x1 ) * 2 || ( ent._hitbox_y2 - ent.hitbox_y1 || 0 ) > ( this._hitbox_y2 - this.hitbox_y1 ) * 2) ? 'That\'s a rather large '+t : t+' is more my size',
+						'this '+t+' looks '+( ( ent._hea || ent.hea || 0 ) > this.hea * 2 ? 'tough' : 'manageable' ),
+						( ent._matter || ent.matter || 0 ) > 0 ? 'Give me that matter, '+t : 'No matter from '+t+'? I\'m disappointed',
+						t+'? That\'s '+( t.length > 14 ? 'hard to remember' : 'memorable' ),
+						t+'! My '+( ent._current_target === this ? 'arch-enemy!' : 'good friend!' ),
+						'That '+t+' '+( ent._current_target === this ? 'doesn\'t look very friendly' : 'is a sight for sore eyes'),
+						( ( ent._current_target && ent._current_target !== this ) ? t+'? Not my problem' : ( ent._current_target === this ) ? t+'? I\'d rather not' : 'At least '+t+' is not hostile'),
+						'My '+( ( this._inventory[ this.gun_slot ] && this._inventory[ this.gun_slot ] !== ent ) ? sdWorld.ClassNameToProperName( this._inventory[ this.gun_slot ].GetClass(), this._inventory[ this.gun_slot ], true ) : 'mind' )+( ent.is( sdGun ) ? ' is jealous of ' : ' wants me to shoot ' )+t,
+						'I\'m looking forward to '+( ent.is( sdGun ) ? 'using '+t : 'finding more '+t+'\'s' ),
+						'Undiscovered '+t+' entity '+(Math.abs(ent.x - this.x) > Math.abs(ent.y - this.y) ? (ent.x < this.x ? 'to my left' : 'to my right') : (ent.y < this.y ? 'above me' : 'below me')),
+						(sdCom.com_faction_attack_classes.indexOf(ent.GetClass()) !== 0 ? 'Oh no, it\'s one of those... '+t+'\'s' : 'Nice, a brand new '+t),
+						'Thought I\'d never find '+t,
+						t+' is more my style',
+						'I could get used to this '+t,
+						t+'? '+t+' yourself!',
+						'Can I get more matter from '+t+'?',
+						t+'? I\'ve seen better',
+						'I am gifted by '+t+'\'s presence',
+						'It looks like '+t+' has arrived',
+						t+'? Things are getting interesting',
+						t+'? That\'s what they used to call me',
+						'To '+t+', or not to '+t+'?',
+						t+', you like to see it',
+						t+', lovely',
+						'I\'m just dying of excitement over '+t,
+						'Wait, is '+t+' new?',
+						'Why does this '+t+' seem familiar?',
+						'I think '+t+' is new to me, but I can\'t remember',
+						'Could have sworn I had already found a '+t,
+						'Cool '+t+', where can I find more?',
+						'Wow, '+t+' is not something I expected',
+						'Look at me, I am the '+t+' now',
+						'That is definitely a '+t+', alright',
+						'Me and '+t+' go way back',
+						'Long time no see, '+t,
+						t+'? I haven\'t heard that name in years',
+						'The others will never believe I found a real '+t,
+						'I should tell others about this '+t,
+						'Maybe I should keep this '+t+' to myself',
+						'Of course, the classic '+t,
+						'I\'m in conniptions over '+t,
+						t+' is quite a sight',
+						'Holy '+t+'!',
+						'How many '+t+'\'s can I find?',
+						'I\'ve got a '+t+' over here',
+						'I could start a collection of these '+t+'\'s',
+						'I should start collecting '+t+'\'s',
+						'I saw a '+t+' before once, a long time ago',
+						'I have heard stories about this '+t,
+						t+' has made my day!',
+						'I am enthralled by '+t,
+						'this '+t+' is impressive',
+						t+' detected',
+						'I have found a '+t+'!',
+						'Analyzing '+t+'... done',
+						'Adding '+t+' to my collection',
+						t+' is not something I expected today',
+						t+' is a highlight for today',
+						'Oh my '+t+'!',
+						'Where did you come from, '+t+'?',
+						'Where have you been, '+t+'?',
+						'Where did you go, '+t+'?',
+						'I\'m gonna be thinking about '+t+'\'s for a while',
+						'I should analyze this '+t,
+						'Wow, a literal '+t+', I\'m so excited',
+						t+' Has been hiding from me',
+						'I wonder what happens if I shoot at '+t,
+						'I feel the compulsion to shoot '+t,
+						'Does '+t+' survive if I shoot it?',
+						t+'? That\'s different',
+						'I\'m going to build a history with '+t,
+						t+' is a surprise to be sure, but a welcome one',
+						'We have '+t+' Now? Great',
+						'I\'m adding '+t+' to my vocabulary',
+						t+' huh, really rolls off the tongue',
+						'Really now, '+i_have_+'a '+t+', unbelievable',
+						t+' is now here, this is where the fun begins',
+						t+' is here, now we\'re rolling',
+						t+' has arrived, party\'s over',
+						t+' is officially here, time to pack it up',
+						t+'? We have '+t+' at home',
+						'Oh wow '+i_have_+'a '+t+', let me get my camera',
+						'So, what\'s the deal with these '+t+'\'s anyway?',
+						'What\'s the deal with '+t+'?',
+						t+'? many such cases!',
+						t+' is here, things just got real',
+						'That '+t+' has been evading me',
+						t+'? It\'s about time!',
+						t+'? Not this again',
+						t+' this, '+t+' that, I got it',
+						'That right there is what you would call a '+t,
+						'Now this right here is what\'s called a '+t,
+						t+' is next level stuff',
+						'I\'m already kind of over this '+t,
+						'I\'m liking this '+t,
+						'I like '+t+' already',
+						t+'? Tell me more',
+						'That\'s what '+t+' looks like? I\'m '+( Math.random() < 0.5 ? 'surprised' : 'not surprised' ),
+						'No way, we have '+t+' now!',
+						'I just noticed '+t+', now you have too',
+						'Take note of the '+t,
+						'I\'m drawing attention to this '+t,
+						'Drop what you\'re doing to look at the '+t,
+						'Stop, '+t+' time',
+						'Yup, it\'s '+t+' time',
+						'Would you look at the time, it\'s '+t+' o\' clock!',
+						'It is now time for, '+t,
+						t+' has arrived, right on schedule',
+						'Just as I predicted, '+t+' is here',
+						t+' is here, all according to plan',
+						'The '+t+' is my new favorite!',
+						'Now I finally know what '+t+' looks like',
+						'I have not documented '+t+' yet',
+						'Prepare to be documented, '+t,
+						t+' is going right into my database',
+						'I feel smarter after discovering '+t,
+						t+' has expanded my knowledge',
+						'Experience gained from '+t,
+						'I have learned about '+t,
+						'Today I learned '+t+' exists',
+						'Why is it called a '+t+'?',
+						t+'? What will they think of next?',
+						'Think fast, '+t+'!',
+						'So, about this '+t+'...',
+						t+'? At this time of day? At this time of year?',
+						'Get a load of this '+t+' over here',
+						i_have_+(i_have_ === '' ? '' : 'a ')+t+'? That\'s enough for today',
+						'This has '+t+' written all over it',
+						'That\'s one too many '+t+'\'s',
+						'Incoming '+t,
+						'New '+t+' inbound',
+						t+' has announced its presence',
+						t+' has so subtly arrived',
+						t+' was here',
+						'Experience the thrill of the '+t,
+						'I am informing you of the '+t,
+						'Take a moment to admire the '+t,
+						'I am examining '+t+', give me a moment',
+						'I\'m about that '+t+' life',
+						'This planet ain\'t big enough for the both of us, '+t,
+						'I will call this a '+t,
+						'Is that a real '+t+'?',
+						'So, '+t+', huh? What a silly name',
+						'I wasn\'t prepared for a '+t+' today',
+						'Count one '+t+' nearby',
+						'Oh, it\'s just one of those '+t+'\s'
 					];
 					
 					// EG: I didn't even read them all.
-					let chatGPT_options = `Well, well, well, what do we have here? A wild THING appears!
+					// They feel kind of out of place IMO - Mrnat444
+					/*let chatGPT_options = `Well, well, well, what do we have here? A wild THING appears!
 Hold onto your helmets, folks! THING sighting ahead!
 Oh, snap! Check out the latest addition to the alien fashion show - THING!
 Look alive, team! THING's dropping in, and it's a head-scratcher!
@@ -927,7 +1080,7 @@ THING is cosmic mic drop!`;
 						options.push( chatGPT_options_lines[ i ].substring( 0, chatGPT_options_lines[ i ].length - 1 ).split( 'THING' ).join( t ) );
 						else
 						options.push( chatGPT_options_lines[ i ].split( 'THING' ).join( t ) );
-					}
+					}*/
 					
 					if ( sdCharacter.unique_discovery_indexes.length === 0 )
 					{
@@ -1263,6 +1416,8 @@ THING is cosmic mic drop!`;
 		this._last_fire_state = 0; // For semi auto weaponry
 		this._shielding = false; // Shielding, same as ghosting
 		
+		this.ghost_charge = sdCharacter.ghost_duration;
+		
 		this._shield_allowed = false; // Through upgrade
 		
 		this._respawn_protection = 0; // Given after long-range teleported. Also on resque teleporting // Also prevents player from shooting
@@ -1270,6 +1425,8 @@ THING is cosmic mic drop!`;
 		this._upgrade_counters = {}; // key = upgrade
 		
 		this._regen_timeout = 0;
+		
+		this._smoke_spawn_wish = 0;
 		
 		this.cc_id = 0; // net_id of Command centre, which defines player's team
 		this._cc_rank = 0; // 0 for owner, anything else for non-owner
@@ -1309,6 +1466,15 @@ THING is cosmic mic drop!`;
 		
 		this._matter_capacity_boosters = 0; // Cube shards are increasing this value
 		this._matter_capacity_boosters_max = 20 * 45;
+		
+		this.energy = sdCharacter.starter_energy;
+		this.energy_max = sdCharacter.starter_energy
+
+		// Dash ability, unfinished
+		this.dash_charge = 100;
+		this.dash_trail = 0;
+		this._dash_trail_spawn = 0;
+		this._last_dash_state = 0;
 		
 		//this.stim_ef = 0; // Stimpack effect
 		this.power_ef = 0; // Damage multiplication effect
@@ -2061,6 +2227,7 @@ THING is cosmic mic drop!`;
 	{
 		//if ( vel > 7 )
 		if ( vel > 6.5 ) // For new mass-based model
+		if ( this.dash_charge > 10 )
 		{
 			/*if ( sdWorld.is_server )
 			if ( this._socket )
@@ -2135,6 +2302,9 @@ THING is cosmic mic drop!`;
 			//if ( sdWorld.CheckLineOfSight( t.x - t._hitbox_x1, t.y + t._hitbox_y1 - this._hitbox_y2 - 1, t.x + t._hitbox_x1, t.y + t._hitbox_y1 - this._hitbox_y2 - 12, t, null, sdCom.com_vision_blocking_classes ) ) // Could be better. Should allow cases of storages and crystals on top of RTP
 			if ( t.GetRTPPotentialPlayerPlacementTestResult( this ) )
 			{
+				if ( t.IsCloner() )
+				tele_cost = 100000;
+
 				let di = sdWorld.Dist2D( this.x, this.y, t.x, t.y );
 				if ( 
 						( di < best_di && tele_cost <= best_cost ) 
@@ -2240,6 +2410,8 @@ THING is cosmic mic drop!`;
 			else
 			{
 				best_t.AddDriver( this, true );
+				
+				this.DropWeapons( true );
 			}
 			
 			sdStatusEffect.PerformActionOnStatusEffectsOf( this, ( status_effect )=>
@@ -2775,8 +2947,8 @@ THING is cosmic mic drop!`;
 			}
 			
 			this._regen_timeout = 30;
-			if ( this.hea < 30 )
-			this._dying = true;
+			// if ( this.hea < 30 )
+			// this._dying = true;
 		}
 		else
 		if ( this._socket !== null || this._my_hash !== undefined || !this.IsHostileAI() ) // Allow healing disconnected players
@@ -3392,8 +3564,8 @@ THING is cosmic mic drop!`;
 
 			if ( this._ai.target && this._ai.target.IsVisible( this ) )
 			{
-				this.look_x = sdWorld.MorphWithTimeScale( this.look_x, this._ai.target.x + ( ( this._ai.target._hitbox_x1 + this._ai.target._hitbox_x2 ) / 2 ), Math.max( 0.5, ( 0.8 - 0.15 * this._ai_level ) ), GSPEED );
-				this.look_y = sdWorld.MorphWithTimeScale( this.look_y, this._ai.target.y + ( this._ai.target_local_y || 0 ), Math.max( 0.5, ( 0.8 - 0.15 * this._ai_level ) ), GSPEED );
+				this.look_x = sdWorld.MorphWithTimeScale( this.look_x, this._ai.target.x + ( ( this._ai.target._hitbox_x1 + this._ai.target._hitbox_x2 ) / 2 ), Math.max( 0.75, ( 0.9 - 0.15 * this._ai_level ) ), GSPEED );
+				this.look_y = sdWorld.MorphWithTimeScale( this.look_y, this._ai.target.y + ( this._ai.target_local_y || 0 ), Math.max( 0.75, ( 0.9 - 0.15 * this._ai_level ) ), GSPEED );
 			}
 			else
 			{
@@ -3500,7 +3672,34 @@ THING is cosmic mic drop!`;
 		return true;
 	}
 
+	// Unfinished dash, needs proper configuration between server and client so that using the ability is only possible if it's ready on both
+	ManagePlayerDash()
+	{
+		let dash_state = this._key_states.GetKey( 'Space' );
 
+		if ( this.hea > 0 && this._frozen <= 0 )
+		if ( dash_state && dash_state !== this._last_dash_state )
+		if ( ( this.act_x !== 0 || this.act_y !== 0 ) && this.dash_charge >= 100 )
+		{
+			let an = Math.atan2( this.act_y - ( this.stands ? 0.25 : 0 ), this.act_x );
+			let speed = 6;
+
+			if ( this.act_x === 1 )
+			this.sx = Math.max( 0, this.sx ) + Math.cos( an ) * speed;
+			else
+			if ( this.act_x === -1 )
+			this.sx = Math.min( 0, this.sx ) + Math.cos( an ) * speed;
+
+			this.sy = Math.min( 0, this.sy ) + Math.sin( an ) * speed;
+
+			this.dash_charge = 0;
+
+			this.dash_trail = 20;
+			sdSound.PlaySound({ name:'gun_missile_launcher_p07', x:this.x, y:this.y, volume:1, pitch:0.75 });
+		}
+
+		this._last_dash_state = dash_state;
+	}
 	TogglePlayerAbility() // part of ManagePlayerVehicleEntrance()
 	{
 		if ( !sdWorld.is_server )
@@ -3631,6 +3830,7 @@ THING is cosmic mic drop!`;
 			this.air = sdCharacter.air_max; // Hack
 			this._nature_damage = 0; // Hack
 			this._player_damage = 0; // Hack
+			this.energy = this.energy_max;
 		}
 	}
 	
@@ -4023,7 +4223,7 @@ THING is cosmic mic drop!`;
 			if ( this.hea > 0 )
 			{
 				this.act_x = this._key_states.GetKey( 'KeyD' ) - this._key_states.GetKey( 'KeyA' );
-				this.act_y = this._key_states.GetKey( 'KeyS' ) - ( ( this._key_states.GetKey( 'KeyW' ) || this._key_states.GetKey( 'Space' ) ) ? 1 : 0 );
+				this.act_y = this._key_states.GetKey( 'KeyS' ) - ( ( this._key_states.GetKey( 'KeyW' ) /*|| this._key_states.GetKey( 'Space' )*/ ) ? 1 : 0 );
 				
 				if ( this._socket || this._ai || sdWorld.my_entity === this )
 				if ( this.act_x !== 0 || this.act_y !== 0 )
@@ -4413,17 +4613,47 @@ THING is cosmic mic drop!`;
 		this.ManagePlayerVehicleEntrance();
 		
 		
+		this.ManagePlayerDash();
+
+		if ( !sdWorld.is_server || sdWorld.is_singleplayer )
+		{
+			if ( this.dash_trail > 0 )
+			{
+				this._dash_trail_spawn += GSPEED;
+				let trail_rate = Math.ceil((1 / this.dash_trail) * 10);
+				if ( this._dash_trail_spawn > trail_rate )
+				{
+					this._dash_trail_spawn = this._dash_trail_spawn % trail_rate;
+					
+					let ent = new sdEffect({ x:this.x + (this.hitbox_x1 + this.hitbox_x2 ) / 2 + ( Math.random() * 2 - 1 ), 
+											y:this.y + (this.hitbox_y1 + this.hitbox_y2 ) / 2 + ( Math.random() * 2 - 1 ), 
+											sx:this.sx * 0.1, 
+											sy:this.sy * 0.1, 
+											type:sdEffect.TYPE_GLOW_HIT, 
+											rotation:Math.atan2( this.sy, this.sx ) });
+					sdEntity.entities.push( ent );
+				}
+			}
+		}
+
+		if ( sdWorld.is_server )
+		if ( this.dash_trail > 0 )
+		{
+			this.dash_trail = Math.max( 0, this.dash_trail - GSPEED );
+		}
+		
+		
 		if ( this.ghosting )
 		{
-			let fuel_cost = 0.4 * GSPEED; // 0.4 Previously
+			let fuel_cost = GSPEED; // 0.4 Previously
 			
-			if ( this.matter < fuel_cost || this.hea <= 0 || this.driver_of )
+			if ( this.ghost_charge < fuel_cost || this.hea <= 0 || this.driver_of )
 			{
 				//this.ghosting = false;
 				this.TogglePlayerAbility();
 			}
 			else
-			this.matter -= fuel_cost;
+			this.ghost_charge -= fuel_cost;
 		
 			this._ghost_breath -= GSPEED;
 			if ( this._ghost_breath < 0 )
@@ -4432,6 +4662,12 @@ THING is cosmic mic drop!`;
 				sdSound.PlaySound({ name:'ghost_breath', x:this.x, y:this.y, volume:1 });
 			}
 		}
+		else
+		{
+			if ( this.ghost_charge < sdCharacter.ghost_duration )
+			this.ghost_charge = Math.min( sdCharacter.ghost_duration, this.ghost_charge + GSPEED );
+		}
+		
 		if ( this._shielding && sdWorld.is_server )
 		{
 			let fuel_cost = 0.6 * GSPEED; // 0.4 Previously
@@ -4447,20 +4683,22 @@ THING is cosmic mic drop!`;
 		
 		//this.flying = true; // Hack
 		
+		let last_flying = this.flying;
+		
 		if ( this.flying )
 		{
 			let di = Math.max( 1, sdWorld.Dist2D_Vector( this.act_x, this.act_y ) );
 			
-			let x_force = this.act_x / di * 0.1;
+			let x_force = this.act_x / di * 0.2;
 			let y_force = ( this.act_y * this._jetpack_power ) / di * 0.1 - sdWorld.gravity;
 			
-			let fuel_cost = GSPEED * sdWorld.Dist2D_Vector( x_force, y_force ) * this._jetpack_fuel_multiplier;
+			let fuel_cost = GSPEED * sdWorld.Dist2D_Vector( x_force, y_force ) * 2.6;
 
-			if ( ( this.stands && this.act_y !== -1 ) || this.driver_of || this._in_water || this.act_y !== -1 || this._key_states.GetKey( 'KeyX' ) || this.matter < fuel_cost || this.hea <= 0 )
+			if ( ( this.stands && this.act_y !== -1 ) || this.driver_of || this._in_water || this.act_y !== -1 || this._key_states.GetKey( 'KeyX' ) || this.energy < fuel_cost || this.hea <= 0 )
 			this.flying = false;
 			else
 			{
-				this.matter -= fuel_cost;
+				this.energy -= fuel_cost;
 			
 				let di = sdWorld.Dist2D_Vector( this.act_x, this.act_y );
 				if ( di > 0 )
@@ -4797,10 +5035,16 @@ THING is cosmic mic drop!`;
 		
 		this._can_breathe = can_breathe;
 		
+		if ( this.energy < this.energy_max && !this.flying && !last_flying )
+		this.energy = Math.min( this.energy_max, this.energy + GSPEED * ( ( this.stands || in_water || ledge_holding ) ? 6 : 1 ) );
+		
+		if ( this.dash_charge < 100 )
+		this.dash_charge = Math.min( 100, this.dash_charge + GSPEED / ( 30 * 5 ) * 100 );
+		
 		if ( this.driver_of && this.driver_of.VehicleHidesDrivers() )
 		this.PositionUpdateAsDriver();
 		else
-		this.ApplyVelocityAndCollisions( GSPEED, this.GetStepHeight(), ( this.hea <= 0 ) );
+		this.ApplyVelocityAndCollisions( GSPEED, ( this.flying && this.sy < -1 ? 0 : this.GetStepHeight() ), ( this.hea <= 0 ) );
 		/*
 		if ( sdWorld.last_hit_entity )
 		{
@@ -4987,8 +5231,9 @@ THING is cosmic mic drop!`;
 			if ( typeof this._inventory[ i ]._held_by === 'undefined' )
 			debugger; // Pickable items should have this property
 
-			if ( this.hea <= 0 || this._is_being_removed )
+			if ( this.hea <= 0 || this._is_being_removed || this._respawn_protection > 0 )
 			{
+				if ( this._respawn_protection <= 0 )
 				this._inventory[ i ].y = this.y + 16 - 4;
 
 				this._inventory[ i ].sx += Math.random() * 6 - 3;
@@ -5175,10 +5420,33 @@ THING is cosmic mic drop!`;
 			
 			let show_air = false;
 			
+			let show_energy = false;
+			
+			let show_dashes = false;
+			
+			let show_ghost = false;
+			
 			if ( sdWorld.my_entity === this )
-			if ( this.air < sdCharacter.air_max )
 			{
-				show_air = true;
+				if ( this.air < sdCharacter.air_max )
+				{
+					show_air = true;
+				}
+				
+				if ( this.energy < this.energy_max )
+				{
+					show_energy = true;
+				}
+				
+				if ( this.dash_charge < 100 )
+				{
+					show_dashes = true;
+				}
+				
+				if ( this.ghost_charge < sdCharacter.ghost_duration )
+				{
+					show_ghost = true;
+				}
 			}
 			
 			let snap_frame = ( ~~( this.death_anim / 10 ) ) * 10 / 20;
@@ -5217,6 +5485,43 @@ THING is cosmic mic drop!`;
 				ctx.fillStyle = '#aaaaff';
 				ctx.fillRect( 1 - w / 2, 5 - raise, ( w - 2 ) * Math.max( 0, this.air / sdCharacter.air_max ), 1 );
 			}
+
+			// let lower = 0;
+			let lower = 40 * this.s / 100 - raise;
+
+			if ( show_energy || show_dashes || show_ghost )
+			{
+				ctx.globalAlpha = ( 1 - snap_frame ) * 0.5;
+				ctx.fillStyle = '#000000';
+				ctx.fillRect( 0 - w / 2, -1 + lower, w, 1 + ( show_energy ? 2 : 0 ) + ( show_dashes ? 2 : 0 ) + ( show_ghost ? 2 : 0 ) );
+			}
+
+			if ( show_energy )
+			{
+				ctx.globalAlpha = 1 - snap_frame;
+				ctx.fillStyle = '#ffff00';
+				ctx.fillRect( 1 - w / 2, lower, ( w - 2 ) * Math.max( 0, this.energy / this.energy_max ), 1 );
+
+				lower += 2;
+			}
+
+			if ( show_ghost )
+			{
+				ctx.globalAlpha = 1 - snap_frame;
+				ctx.fillStyle = '#00ff00';
+				ctx.fillRect( 1 - w / 2, lower, ( w - 2 ) * Math.max( 0, this.ghost_charge / sdCharacter.ghost_duration ), 1 );
+
+				lower += 2;
+			}
+
+			if ( show_dashes )
+			{
+				ctx.globalAlpha = 1 - snap_frame;
+				ctx.fillStyle = '#ff7300';
+				ctx.fillRect( 1 - w / 2, lower, ( w - 2 ) * Math.max( 0, this.dash_charge / 100 ), 1 );
+			}
+
+			ctx.globalAlpha = 1;
 			
 			//
 			
@@ -6436,6 +6741,7 @@ THING is cosmic mic drop!`;
 				if ( exectuter_character._god )
 				{
 					this.AddContextOption( 'Press "E"', 'ADMIN_PRESS', [ 'KeyE' ], true, { color:'ff0000' } );
+					this.AddContextOption( 'Press "Space"', 'ADMIN_PRESS', [ 'Space' ], true, { color:'ff0000' } );
 					this.AddContextOption( 'Press "Mouse1"', 'ADMIN_PRESS', [ 'Mouse1' ], true, { color:'ff0000' } );
 					this.AddContextOption( 'Press "Mouse2"', 'ADMIN_PRESS', [ 'Mouse2' ], true, { color:'ff0000' } );
 					this.AddContextOption( 'Press "1"', 'ADMIN_PRESS', [ 'Digit1' ], true, { color:'ff0000' } );

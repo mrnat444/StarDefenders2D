@@ -2793,8 +2793,9 @@ class sdWeather extends sdEntity
 								character_entity.matter = 800;
 								character_entity.matter_max = 800;
 
-								character_entity.hea = 8500; // 105 so railgun requires at least headshot to kill and body shot won't cause bleeding
-								character_entity.hmax = 8500;
+								character_entity.s = 250;
+								character_entity.hea = 8500 / ( character_entity.s / 100 ); // Damage taken is divided by the character's scale
+								character_entity.hmax = character_entity.hea;
 
 								//character_entity._damage_mult = 1 / 2.5; // 1 / 4 was too weak
 							}
@@ -2810,7 +2811,6 @@ class sdWeather extends sdEntity
 							character_entity._jetpack_fuel_multiplier = 0.25; // Less fuel usage when jetpacking
 							character_entity._ai_team = 1; // AI team 1 is for Falkoks, preparation for future AI factions
 							character_entity._matter_regeneration_multiplier = 10; // Their matter regenerates 10 times faster than normal, unupgraded players
-							character_entity.s = 250;
 							character_entity._jetpack_power = 4;
 
 							break;

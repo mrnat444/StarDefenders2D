@@ -278,7 +278,10 @@ class sdCrystal extends sdEntity
 		else
 		{
 			this.matter = this.matter_max;
-			this._hea = this.type === sdCrystal.TYPE_CRYSTAL_CRAB_BIG ? 300 : this.type === sdCrystal.TYPE_CRYSTAL_BIG ? 240 : 60;
+			this._hea = Math.round( ( 
+				this.type === sdCrystal.TYPE_CRYSTAL_CRAB_BIG ? 300 : 
+				this.type === sdCrystal.TYPE_CRYSTAL_BIG ? 240 : 60 ) * 
+				( 1 + this.matter_max / 4000 ) );
 			this._damagable_in = sdWorld.time + 1000; // Suggested by zimmermannliam, will only work for sdCharacter damage		
 		}
 		
@@ -544,11 +547,10 @@ class sdCrystal extends sdEntity
 		}
 		else
 		{
+			let in_water = sdWater.all_swimmers.has( this );
 			
 			if ( this.type === sdCrystal.TYPE_CRYSTAL_BALLOON )
 			{
-				let in_water = sdWater.all_swimmers.has( this );
-				
 				if ( in_water )
 				this.sy -= sdWorld.gravity * GSPEED;
 				else
@@ -560,6 +562,9 @@ class sdCrystal extends sdEntity
 			else
 			{
 				this.sy += sdWorld.gravity * GSPEED;
+				
+				if ( in_water )
+				this.sy = sdWorld.MorphWithTimeScale( this.sy, 0, 0.96, GSPEED );
 			}
 		}
 		

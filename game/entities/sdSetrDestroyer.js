@@ -641,7 +641,7 @@ class sdSetrDestroyer extends sdEntity
 						if ( this.hea < ( this._hmax / 2 ) )
 						{
 							this.FireDirectionalProjectiles();
-							this._projectile_attack_timer = 4.5;
+							this._projectile_attack_timer = 15;
 						}
 					}
 					//let targets_raw = sdWorld.GetAnythingNear( this.x, this.y, 800 );
@@ -694,10 +694,16 @@ class sdSetrDestroyer extends sdEntity
 						let dx = ( targets[ i ].sx || 0 );
 						let dy = ( targets[ i ].sy || 0 );
 
-						let an = Math.atan2( targets[ i ].y - this.y - dy * 3, targets[ i ].x - this.x  - dx * 3 ) + ( Math.random() * 2 - 1 ) * 0.1;
+						//let an = Math.atan2( targets[ i ].y - this.y - dy * 3, targets[ i ].x - this.x  - dx * 3 ) + ( Math.random() * 2 - 1 ) * 0.1;
 
-						this.look_x = targets[ i ].x + ( dx * 3 );
-						this.look_y = targets[ i ].y + ( dy * 3 ); // Homing coordinates are updated only when firing so players can still dodge them
+						if ( this._rockets >= 6 )
+						{
+							this.look_x = targets[ i ].x;// + ( dx * 3 );
+							this.look_y = targets[ i ].y;// + ( dy * 3 ); // Homing coordinates are updated only when firing so players can still dodge them
+						}
+
+						let an = Math.atan2( this.look_y - this.y, this.look_x - this.x ) + ( Math.random() * 2 - 1 ) * 0.4;
+
 						let bullet_obj = new sdBullet({ x: this.x, y: this.y });
 						bullet_obj._owner = this;
 						bullet_obj.sx = Math.cos( an );
@@ -705,8 +711,8 @@ class sdSetrDestroyer extends sdEntity
 						//bullet_obj.x += bullet_obj.sx * 5;
 						//bullet_obj.y += bullet_obj.sy * 5;
 
-						bullet_obj.sx *= 15;
-						bullet_obj.sy *= 15;
+						bullet_obj.sx *= 20;
+						bullet_obj.sy *= 20;
 					
 						bullet_obj.model = 'rocket_proj';
 
@@ -714,8 +720,10 @@ class sdSetrDestroyer extends sdEntity
 						bullet_obj.explosion_radius = 10 * 1.5;
 						bullet_obj.color = '#7acaff';
 						bullet_obj._homing = true;
-						bullet_obj._homing_mult = 0.04;
-						bullet_obj.ac = 0.12;
+						bullet_obj._homing_mult = 0.1;
+						bullet_obj.ac = 0.015;
+
+						bullet_obj.time_left = 30 * 3;
 
 						sdEntity.entities.push( bullet_obj );
 

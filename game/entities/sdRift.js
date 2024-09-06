@@ -68,21 +68,26 @@ class sdRift extends sdEntity
 		
 		this.type = params.type || portal_type; // Default is the weakest variation of the rift ( Note: params.type as 0 will be defaulted to 1, implement typeof check here if 0 value is needed )
 		// this.type needs to be placed before hmax and hea so council portals can actually last long enough. Otherwise it disappears in a minute or so
-		this.hmax = this.type === sdRift.TYPE_DIMENSIONAL_TEAR ? 5120 : 1800 * 30; // Dimensional tears are closable with normal crystals now, while everything else disappears on it's own
+		// this.hmax = this.type === sdRift.TYPE_DIMENSIONAL_TEAR ? 5120 : 1800 * 30; // Dimensional tears are closable with normal crystals now, while everything else disappears on it's own
+		this.hmax = 30 * 60 * 2; // 2 minutes to complete
 		this.hea = this.hmax;
 		this._regen_timeout = 0;
 		//this._cooldown = 0;
 		this._matter_crystal_max = 20480;
 		this.matter_crystal = 0; // Named differently to prevent matter absorption from entities that emit matter
-		this._spawn_timer = params._spawn_timer || 30 * 60; // Either defined by spawn or 60 seconds
+		this._spawn_timer = params._spawn_timer || 30 * 30; // Either defined by spawn or 60 seconds
 		this._spawn_timer_cd = this._spawn_timer; // Countdown/cooldown for spawn timer
-		this._teleport_timer = 30 * 60 * 10; // Time for the portal to switch location
+		this._teleport_timer = 30 * 60 * 6; // Time for the portal to switch location
 		this._time_until_teleport = this._teleport_timer;
 		this._rotate_timer = 10; // Timer for rotation sprite index
 		this.frame = 0; // Rotation sprite index
 		this.scale = 1; // Portal scaling when it's about to be destroyed/removed
 		this.teleport_alpha = 0; // Alpha/transparency ( divided by 60 in draw code ) when portal is about to change location
 		this._tear_range = 48; // It starts out weak so players have a chance to close it, then grows stronger over time
+
+		this._nearby_players_timer = 60;
+		this.players_near = false;
+		this.display_fade = 0;
 
 		//this._pull_entities = []; // For dimensional tear
 
@@ -155,13 +160,13 @@ class sdRift extends sdEntity
 				if ( sdWorld.sockets[ i ].character )
 				{
 					
-					let potential_description;
+					/*let potential_description;
 					switch( 2 ) // switch ( ~~( Math.random() * 2 ) )
 					{
 						case 0: potential_description = 'We have a dimensional tear on the planet. Close it down before it\'s influence grows too much. Intel claims you can put enough crystals in there to close it.'; break;
 						case 1: potential_description = 'Dimensional tear appeared - you need to close it by putting crystals inside it. If we wait for too long it\'s force will grow stronger.'; break;
 						case 2: potential_description = 'A dimensional tear appeared on this planet. It should be closed down before it destroys large chunks of the planet. We can close it by putting crystals inside it.'; break;
-					}
+					}*/
 					// Tried multiple descriptions here - they just override each other in interface of the player - flicker so to speak, so I've just set it to old description - Booraz149
 				
 					sdTask.MakeSureCharacterHasTask({ 
@@ -171,7 +176,7 @@ class sdRift extends sdEntity
 						mission: sdTask.MISSION_DESTROY_ENTITY,
 						difficulty: 0.1 * sdTask.GetTaskDifficultyScaler(),		
 						title: 'Close the dimensional tear',
-						description: potential_description
+						description: "A dimensional tear has appeared. Fully-charging it could produce an anticrystal, but be careful getting too close."
 					});
 				}
 
@@ -269,6 +274,58 @@ class sdRift extends sdEntity
 									}
 								}
 							}
+						}
+					}
+				}
+			}
+			
+			if ( this._nearby_players_timer > 0 )
+			this._nearby_players_timer -= GSPEED;
+			else
+			{
+				this._nearby_players_timer = 60;
+
+				for ( let i = 0; i < sdWorld.sockets.length; i++ ) // Let players know that it needs to be closed
+				{
+					this.players_near = false;
+
+					if ( sdWorld.sockets[ i ].character )
+					if ( !sdWorld.sockets[ i ].character._is_being_removed )
+					{
+						let character = sdWorld.sockets[ i ].character;
+
+						if ( this.type !== sdRift.TYPE_DIMENSIONAL_TEAR )
+						{
+							if ( sdWorld.inDist2D_Boolean( this.x, this.y, character.x, character.y, 4000 ) )
+							{
+								sdTask.MakeSureCharacterHasTask({ 
+									similarity_hash:'DESTROY-'+this._net_id, 
+									executer: sdWorld.sockets[ i ].character,
+									target: this,
+									mission: sdTask.MISSION_DESTROY_ENTITY,
+									difficulty: 0.167 * sdTask.GetTaskDifficultyScaler(),
+									title: 'Close the dimensional portal',
+									description: 'A dimensional portal is nearby. Fully-charging it could produce crystals.'
+								});
+							}
+							else
+							{
+								sdTask.PerformActionOnTasksOf( character, ( task )=>
+								{
+									if ( task.mission === sdTask.MISSION_DESTROY_ENTITY )
+									if ( task._target === this )
+									task.remove();
+								});
+							}
+						}
+
+						if ( sdWorld.inDist2D_Boolean( this.x, this.y, character.x, character.y, Math.max( 200, this._tear_range + 100 ) ) )
+						{
+							this.players_near = true;
+						
+							this._regen_timeout = 30 * 60 * 2;
+
+							break;
 						}
 					}
 				}
@@ -442,22 +499,37 @@ class sdRift extends sdEntity
 					}
 				}
 
+				let power = this.players_near ? Math.min( 2, 0.5 + 1.5 * ( 1 - this.hea / this.hmax ) ) : 0.5;
+
 				//this._spawn_timer_cd = ( this.type === sdRift.TYPE_ASTEROID_PORTAL ? 0.25 : 1 ) * this._spawn_timer * Math.max( 0.1, this.hea / this.hmax ); // Reset spawn timer countdown, depending on HP left off the portal
-				this._spawn_timer_cd = ( this.type === sdRift.TYPE_COUNCIL_PORTAL ? 0.35 : this.type === sdRift.TYPE_ASTEROID_PORTAL ? 0.25 : 1 ) * this._spawn_timer * Math.max( 0.1, Math.pow( Math.random(), 0.5 ) ); // Reset spawn timer countdown, but randomly while prioritizing longer spawns to prevent farming or not feeding any crystals to portal for too long
+				this._spawn_timer_cd = ( this.players_near ? 1 : 0.25 ) * 
+				( 
+					this.type === sdRift.TYPE_CRYSTALLIZED_PORTAL ? 0.5 : 
+					this.type === sdRift.TYPE_ASTEROID_PORTAL ? 0.25 : 
+					1 
+				) * 
+				this._spawn_timer * Math.max( 0.1, Math.pow( Math.random(), power ) ); // Reset spawn timer countdown, but randomly while prioritizing longer spawns to prevent farming or not feeding any crystals to portal for too long
 			}
 			
-			if ( this.matter_crystal > 0 ) // Has the rift drained any matter?
+			/*if ( this.matter_crystal > 0 ) // Has the rift drained any matter?
 			{
 				this.hea = Math.max( this.hea - ( GSPEED * 3 ), 0 ); // Shrink
 				this.matter_crystal -= GSPEED * 3;
-			}
+			}*/
 			
-			if ( this.type !== 4 ) // All but dimensional tears disappear over time
-			this.hea = Math.max( this.hea - GSPEED, 0 );
+			// if ( this.type !== 4 ) // All but dimensional tears disappear over time
+			if ( this.players_near )
+			{
+				this.hea = Math.max( this.hea - GSPEED, 0 );
+
+				this.display_fade = Math.min( this.display_fade + GSPEED, 100 );
+			}
+			else
+			this.display_fade = Math.max( this.display_fade - GSPEED, 0 );
 		
 			if ( this._time_until_teleport > 0 )
 			{
-				this._time_until_teleport -= GSPEED;
+				this._time_until_teleport -= GSPEED * ( this.players_near ? 5 : 1 );
 				this.teleport_alpha = Math.min( this.teleport_alpha + GSPEED, 60 );
 			}
 			else
@@ -466,7 +538,19 @@ class sdRift extends sdEntity
 	
 			if ( this.teleport_alpha <= 0 && this._time_until_teleport <= 0 ) // Relocate the portal
 			{
-				sdWeather.SetRandomSpawnLocation( this );
+				let last_x = this.x;
+				let last_y = this.y;
+
+				let tr = 10;
+				while ( tr > 0 )
+				{
+					sdWeather.SetRandomSpawnLocation( this );
+
+					if ( sdWorld.inDist2D_Boolean( last_x, last_y, this.x, this.y, 2000 ) )
+					break;
+
+					tr--;
+				}
 				/*
 				let x,y,i;
 				let tr = 1000;
@@ -501,9 +585,69 @@ class sdRift extends sdEntity
 			}
 			if ( this.scale <= 0 )
 			{
+				let matter = this.type === sdRift.TYPE_DIMENSIONAL_TEAR ? 1 : // Just spawn one anticrystal if a dimensional tear
+				Math.max( 1280, Math.random() * 5120 ) * ( 
+					this.type === sdRift.TYPE_CUBE_PORTAL ? 2 : 
+					this.type === sdRift.TYPE_COUNCIL_PORTAL ? 4 : 
+					1 );
+
+				do
+				{
+					let crystal = new sdCrystal({ x:this.x, y:this.y });
+
+					if ( this.type == sdRift.TYPE_DIMENSIONAL_TEAR )
+					{
+						crystal.matter_max = sdCrystal.anticrystal_value;
+						crystal.matter = 0;
+					}
+					else
+					{
+						let r = Math.random() * matter;
+						if ( r < 640 )
+						r = 640;
+						else
+						if ( r < 640 * 2 )
+						r = 640 * 2;
+						else
+						if ( r < 640 * 4 )
+						r = 640 * 4;
+						else
+						if ( r < 640 * 8 )
+						r = 640 * 8;
+						else
+						r = 640 * 16;
+	
+						crystal.matter_max = r;
+						crystal.matter = crystal.matter_max;
+					}
+
+					sdEntity.entities.push( crystal );
+
+					out:
+					for ( let r = 0; r < 32; r += 8 )
+					for ( let an = 0; an < 16; an++ )
+					{
+						let ang = an / 16 * Math.PI * 2;
+	
+						let new_x = this.x + Math.sin( ang ) * r;
+						let new_y = this.y + Math.cos( ang ) * r;
+	
+						if ( crystal.CanMoveWithoutOverlap( new_x, new_y, 0 ) )
+						{
+							crystal.x = new_x;
+							crystal.y = new_y;
+	
+							sdWorld.UpdateHashPosition( crystal, false ); // Prevent intersection with other ones
+							break out;
+						}
+					}
+
+					matter -= crystal.matter_max;
+				} while ( matter > 0 )
+
 				//let r = Math.random();
 
-				if ( this.type === sdRift.TYPE_DIMENSIONAL_TEAR ) // Dimensional tears drop score, others don't since they disappear over time
+				/*if ( this.type === sdRift.TYPE_DIMENSIONAL_TEAR ) // Dimensional tears drop score, others don't since they disappear over time
 				{
 					let x = this.x;
 					let y = this.y;
@@ -521,7 +665,7 @@ class sdRift extends sdEntity
 					sdEntity.entities.push( gun );
 
 					}, 500 );
-				}
+				}*/
 				this.remove();
 				return;
 			}
@@ -529,6 +673,8 @@ class sdRift extends sdEntity
 	}
 	onMovementInRange( from_entity )
 	{
+		return;
+
 		if ( !sdWorld.is_server )
 		return;
 
@@ -625,6 +771,40 @@ class sdRift extends sdEntity
 		sdEntity.Tooltip( ctx, "Dimensional portal", 0, 0 );
 		else
 		sdEntity.Tooltip( ctx, "Dimensional portal (overcharged)", 0, 0 ); // Lets players know it has enough matter to destroy itself
+	}
+	DrawFG( ctx, attached )
+	{
+		if ( this.hea > 0 )
+		if ( this.display_fade > 0 )
+		{
+			let alpha = ( this.display_fade / 100 );
+
+			let y_raise = 8;
+
+			let w = 100;
+
+			let h = this._hitbox_y1;
+
+			ctx.fillStyle = '#000000';
+			ctx.globalAlpha = alpha;
+			ctx.fillRect( 0 - w / 2, 0 + h - y_raise, w, 3 );
+
+			ctx.fillStyle = '#00AAFF';
+			ctx.globalAlpha = alpha;
+		
+			ctx.fillRect( 1 - w / 2, 1 + h - y_raise, ( w - 2 ) * Math.max( 0, 1 - this.hea / this.hmax ), 1 );
+
+			/*ctx.strokeStyle = '#00FFFF';
+			ctx.lineWidth = 4;
+			ctx.globalAlpha = alpha * 0.5;
+			ctx.filter = 'blur(4px)';
+
+			ctx.beginPath();
+			ctx.arc( 0,0, Math.max( 200, this._tear_range + 100 ), 0, Math.PI*2 );
+			ctx.stroke();*/
+
+			ctx.globalAlpha = 1;
+		}
 	}
 	
 	onRemove() // Class-specific, if needed

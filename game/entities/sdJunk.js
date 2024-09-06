@@ -117,9 +117,9 @@ class sdJunk extends sdEntity
 		if ( this.type === sdJunk.TYPE_ADVANCED_MATTER_CONTAINER ) // Task reward matter container
 		this.hmax = 4000;
 		if ( this.type === sdJunk.TYPE_ERTHAL_DISTRESS_BEACON ) // Erthal distress beacon
-		this.hmax = 25000;
+		this.hmax = 15000;
 		if ( this.type === sdJunk.TYPE_COUNCIL_BOMB ) // Council bomb
-		this.hmax = 50000;
+		this.hmax = 30000;
 		if ( this.type === sdJunk.TYPE_PLANETARY_MATTER_DRAINER ) // Large anti-crystal
 		this.hmax = 1000;
 		else
@@ -573,19 +573,20 @@ class sdJunk extends sdEntity
 							//if ( sdWorld.sockets[ i ].character.build_tool_level > 0 )
 							{
 								di = sdWorld.Dist2D( sdWorld.sockets[ i ].character.x, sdWorld.sockets[ i ].character.y, this.x, this.y );
-								if ( di < 300 )
+								let max_di = 1000;
+								if ( di < max_di * 0.2 )
 								di_mult = 0.6;
 								else
-								if ( di < 600 )
+								if ( di < max_di * 0.4 )
 								di_mult = 0.7;
 								else
-								if ( di < 900 )
+								if ( di < max_di * 0.6 )
 								di_mult = 0.8;
 								else
-								if ( di < 1200 )
+								if ( di < max_di * 0.8 )
 								di_mult = 0.9;
 
-								if ( di < 1500 )
+								if ( di < max_di )
 								{
 									sdWorld.sockets[ i ].character.matter = sdWorld.sockets[ i ].character.matter * multiplier * di_mult;
 									
@@ -597,6 +598,15 @@ class sdJunk extends sdEntity
 										difficulty: 0.125 * sdTask.GetTaskDifficultyScaler(),
 										title: 'Destroy planetary matter drainer',
 										description: 'There is a planetary matter drainer spotted nearby. Destroy it before it drains all our matter!'
+									});
+								}
+								else
+								{
+									sdTask.PerformActionOnTasksOf( sdWorld.sockets[ i ].character, ( task )=>
+									{
+										if ( task.mission === sdTask.MISSION_DESTROY_ENTITY )
+										if ( task._target === this )
+										task.remove();
 									});
 								}
 							}

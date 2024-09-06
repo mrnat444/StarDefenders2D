@@ -436,7 +436,7 @@ class sdShop
 			{
 				sdShop.options.push({ _class: 'sdRescueTeleport', type: sdRescueTeleport.TYPE_SHORT_RANGE, _category:'Base equipment'});
 				sdShop.options.push({ _class: 'sdRescueTeleport', type: sdRescueTeleport.TYPE_INFINITE_RANGE, _category:'Base equipment', _min_build_tool_level: 10 });
-				sdShop.options.push({ _class: 'sdRescueTeleport', type: sdRescueTeleport.TYPE_CLONER, _category:'Base equipment', _min_build_tool_level: 20 });
+				sdShop.options.push({ _class: 'sdRescueTeleport', type: sdRescueTeleport.TYPE_CLONER, _category:'Base equipment', _min_build_tool_level: 2 });
 			}
 			if ( sdWorld.server_config.allowed_base_shielding_unit_types === null )
 			{
@@ -982,7 +982,7 @@ class sdShop
 					character._air_upgrade = 1 + level_purchased ; // 
 				}
 			},*/
-			upgrade_jetpack_fuel_cost_reduction: // Upgrade idea & pull request by Booraz149 ( https://github.com/Booraz149 )
+			/*upgrade_jetpack_fuel_cost_reduction: // Upgrade idea & pull request by Booraz149 ( https://github.com/Booraz149 )
 			{
 				max_level: 5,
 				matter_cost: 150,
@@ -992,7 +992,7 @@ class sdShop
 				{
 					character._jetpack_fuel_multiplier = 1 - ( 0.15 * level_purchased ); // Max 75% fuel cost reduction
 				}
-			},
+			},*/
 			upgrade_matter_regeneration_speed: // Upgrade idea & pull request by Booraz149 ( https://github.com/Booraz149 )
 			{
 				max_level: 3,
@@ -1002,6 +1002,17 @@ class sdShop
 				action: ( character, level_purchased )=>
 				{
 					character._matter_regeneration_multiplier = 1 + level_purchased;
+				}
+			},
+			upgrade_energy_capacity:
+			{
+				max_level: 5,
+				matter_cost: 150,
+				min_build_tool_level: 1,
+				description: 'Increases energy capacity for longer jetpack use.',
+				action: ( character, level_purchased )=>
+				{
+					character.energy_max = 30 * ( 3 + level_purchased * 2 ) // Max 13 seconds of use
 				}
 			},
 			upgrade_jetpack_power:

@@ -30,9 +30,9 @@ class sdRescueTeleport extends sdEntity
 		*/
 		sdRescueTeleport.max_matter = 1700;
 		sdRescueTeleport.max_matter_short = 500;
-		sdRescueTeleport.max_matter_cloner = 40000 * 3; // 40k can be charged rather quickly. It is a last resort escape thing after all.
+		sdRescueTeleport.max_matter_cloner = 0; // 40000 * 3; // 40k can be charged rather quickly. It is a last resort escape thing after all.
 		
-		sdRescueTeleport.clonning_time = 30 * 60 * 3;// 3 minutes
+		sdRescueTeleport.clonning_time = 30 * 5; // 30 * 60 * 3;// 3 minutes
 
 		sdRescueTeleport.max_short_range_distance = 1200;
 		sdRescueTeleport.max_default_range_distance = 10000;
@@ -410,7 +410,9 @@ class sdRescueTeleport extends sdEntity
 	
 	MeasureMatterCost()
 	{
-		if ( this.type === sdRescueTeleport.TYPE_INFINITE_RANGE || this.type === sdRescueTeleport.TYPE_CLONER )
+		if ( this.type === sdRescueTeleport.TYPE_CLONER )
+		return this._hmax * sdWorld.damage_to_matter + 600;
+		if ( this.type === sdRescueTeleport.TYPE_INFINITE_RANGE )// || this.type === sdRescueTeleport.TYPE_CLONER )
 		return this._hmax * sdWorld.damage_to_matter + 2000;
 		else
 		return this._hmax * sdWorld.damage_to_matter + 200; // 1700
@@ -579,10 +581,20 @@ class sdRescueTeleport extends sdEntity
 		{
 			let postfix;
 
-			if ( this.driver0 )
-			postfix = " ( " + sdWorld.RoundedThousandsSpaces(this.matter) + " / " + sdWorld.RoundedThousandsSpaces(this._matter_max) + ", " + T("cloning") + " "+(~~Math.min( 100, this.cloning_progress / sdRescueTeleport.clonning_time * 100 ))+"% )";
+			if ( this._matter_max <= 0 )
+			{
+				if ( this.driver0 )
+				postfix = ", " + T("cloning") + " "+(~~Math.min( 100, this.cloning_progress / sdRescueTeleport.clonning_time * 100 ))+"% )";
+				else
+				postfix = "";
+			}
 			else
-			postfix = "  ( " + sdWorld.RoundedThousandsSpaces(this.matter) + " / " + sdWorld.RoundedThousandsSpaces(this._matter_max) + " )";
+			{
+				if ( this.driver0 )
+				postfix = " ( " + sdWorld.RoundedThousandsSpaces(this.matter) + " / " + sdWorld.RoundedThousandsSpaces(this._matter_max) + ", " + T("cloning") + " "+(~~Math.min( 100, this.cloning_progress / sdRescueTeleport.clonning_time * 100 ))+"% )";
+				else
+				postfix = "  ( " + sdWorld.RoundedThousandsSpaces(this.matter) + " / " + sdWorld.RoundedThousandsSpaces(this._matter_max) + " )";
+			}
 
 			if ( this.owner_biometry === -1 )
 			sdEntity.TooltipUntranslated( ctx, T( this.title ) + postfix );

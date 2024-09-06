@@ -998,7 +998,7 @@ class sdCube extends sdEntity
 				this._move_dir_timer -= GSPEED;
 			}
 		
-			let v = ( this.attack_anim > 0 ) ? 0.3 : 0.1;
+			let v = ( this.attack_anim > 0 ) ? 0.6 : 0.2;
 
 			this.sx += this._move_dir_x * v * GSPEED;
 			this.sy += this._move_dir_y * v * GSPEED;
@@ -1140,8 +1140,8 @@ class sdCube extends sdEntity
 									bullet_obj.sx = Math.cos( an );
 									bullet_obj.sy = Math.sin( an );
 
-									bullet_obj.sx *= 16;
-									bullet_obj.sy *= 16;
+									bullet_obj.sx *= 12;
+									bullet_obj.sy *= 12;
 
 									//bullet_obj.time_left = 60;
 									bullet_obj.time_left = 90; // overriden later
@@ -1163,102 +1163,107 @@ class sdCube extends sdEntity
 						else
 						{
 
-							let an = Math.atan2( targ.y + ( targ._hitbox_y1 + targ._hitbox_y2 ) / 2 - this.y, targ.x + ( targ._hitbox_x1 + targ._hitbox_x2 ) / 2 - this.x );
+							let xx = targ.x + ( targ._hitbox_x1 + targ._hitbox_x2 ) / 2;
+							let yy = targ.y + ( targ._hitbox_y1 + targ._hitbox_y2 ) / 2;
 
-
-							let bullet_obj = new sdBullet({ x: this.x, y: this.y });
-							bullet_obj._owner = this;
-							bullet_obj.sx = Math.cos( an );
-							bullet_obj.sy = Math.sin( an );
-
-							bullet_obj.sx *= 16;
-							bullet_obj.sy *= 16;
-
-							bullet_obj.time_left = 60;
-
-							bullet_obj._rail = true;
-
-							bullet_obj._damage = 15;
-							
-							if ( this.kind === sdCube.KIND_YELLOW || this.kind === sdCube.KIND_WHITE )
+							setTimeout(()=>
 							{
-								bullet_obj._damage = 18;
-							}
-							
-							if ( this.kind === sdCube.KIND_PINK )
-							{
-								bullet_obj._damage = -15;
-							}
-							
-							if ( this.kind === sdCube.KIND_BLUE )
-							{
-								bullet_obj._damage = 0;
+								let an = Math.atan2( yy - this.y, xx - this.x );
+
+								let bullet_obj = new sdBullet({ x: this.x, y: this.y });
+								bullet_obj._owner = this;
+								bullet_obj.sx = Math.cos( an );
+								bullet_obj.sy = Math.sin( an );
+
+								bullet_obj.sx *= 16;
+								bullet_obj.sy *= 16;
+
+								bullet_obj.time_left = 60;
+
+								bullet_obj._rail = true;
+
+								bullet_obj._damage = 15;
 								
-								bullet_obj._custom_target_reaction = 
-								bullet_obj._custom_target_reaction_protected = ( bullet, hit_entity )=>
+								if ( this.kind === sdCube.KIND_YELLOW || this.kind === sdCube.KIND_WHITE )
 								{
-									if ( hit_entity )
-									if ( hit_entity.is( sdCube ) )
-									{
-										hit_entity.armor = Math.min( hit_entity.armor + 25, hit_entity.armor_max );
-									}
-								};
-							}
-							
-							if ( this.kind === sdCube.KIND_GREEN )
-							{
-								bullet_obj._damage = 0;
+									bullet_obj._damage = 18;
+								}
 								
-								bullet_obj._custom_target_reaction = 
-								bullet_obj._custom_target_reaction_protected = ( bullet, hit_entity )=>
+								if ( this.kind === sdCube.KIND_PINK )
 								{
-									if ( hit_entity )
-									if ( hit_entity.is( sdCube ) )
-									if ( hit_entity.kind !== sdCube.KIND_GREEN )
-									{
-										hit_entity._invisible_until = sdWorld.time + 10000;
-									}
-								};
-							}
-							
-							bullet_obj.color = ( this.kind === sdCube.KIND_PINK ) ? '#ff00ff' : '#ffffff'; // Cube healing rays are pink to distinguish them from damaging rails
-							
-							if ( this.kind === sdCube.KIND_ANCIENT ) // Ancient cube fires cyan rails but they deal lost damage instead of regular. Also different color
-							{
-								let custom_target_reaction = ( bullet, target_entity )=>
+									bullet_obj._damage = -15;
+								}
+								
+								if ( this.kind === sdCube.KIND_BLUE )
 								{
-									if ( target_entity.is( sdLost ) )
+									bullet_obj._damage = 0;
+									
+									bullet_obj._custom_target_reaction = 
+									bullet_obj._custom_target_reaction_protected = ( bullet, hit_entity )=>
 									{
-										target_entity.DamageWithEffect( 10, bullet._owner );
-									}
-
-									sdLost.ApplyAffection( target_entity, 15, bullet, sdLost.FILTER_WHITE );
-								};
+										if ( hit_entity )
+										if ( hit_entity.is( sdCube ) )
+										{
+											hit_entity.armor = Math.min( hit_entity.armor + 25, hit_entity.armor_max );
+										}
+									};
+								}
 								
-								bullet_obj._custom_target_reaction = custom_target_reaction;
-								bullet_obj._damage = 0;
-								bullet_obj.color = '#d6981e';
-							}
-							
-							if ( this.kind === sdCube.KIND_MATTER_STEALER )
-							{
-								bullet_obj._damage = 8;
-								bullet_obj.color = '#00ff00';
+								if ( this.kind === sdCube.KIND_GREEN )
+								{
+									bullet_obj._damage = 0;
+									
+									bullet_obj._custom_target_reaction = 
+									bullet_obj._custom_target_reaction_protected = ( bullet, hit_entity )=>
+									{
+										if ( hit_entity )
+										if ( hit_entity.is( sdCube ) )
+										if ( hit_entity.kind !== sdCube.KIND_GREEN )
+										{
+											hit_entity._invisible_until = sdWorld.time + 10000;
+										}
+									};
+								}
 								
-								sdSound.PlaySound({ name:'red_railgun', pitch: ( 1 + this._charged_shots * 0.1 ) * ( 0.5 + GSPEED_MULT * 0.5 ), x:this.x, y:this.y, volume:0.5 });
-							}
-							else
-							{
-								sdSound.PlaySound({ name:'cube_attack', pitch: ( this.kind === sdCube.KIND_WHITE || this.kind === sdCube.KIND_YELLOW ) ? 0.5 : 1, x:this.x, y:this.y, volume:0.5 });
-							}
+								bullet_obj.color = ( this.kind === sdCube.KIND_PINK ) ? '#ff00ff' : '#ffffff'; // Cube healing rays are pink to distinguish them from damaging rails
+								
+								if ( this.kind === sdCube.KIND_ANCIENT ) // Ancient cube fires cyan rails but they deal lost damage instead of regular. Also different color
+								{
+									let custom_target_reaction = ( bullet, target_entity )=>
+									{
+										if ( target_entity.is( sdLost ) )
+										{
+											target_entity.DamageWithEffect( 10, bullet._owner );
+										}
 
-							sdEntity.entities.push( bullet_obj );
+										sdLost.ApplyAffection( target_entity, 15, bullet, sdLost.FILTER_WHITE );
+									};
+									
+									bullet_obj._custom_target_reaction = custom_target_reaction;
+									bullet_obj._damage = 0;
+									bullet_obj.color = '#d6981e';
+								}
+								
+								if ( this.kind === sdCube.KIND_MATTER_STEALER )
+								{
+									bullet_obj._damage = 8;
+									bullet_obj.color = '#00ff00';
+									
+									sdSound.PlaySound({ name:'red_railgun', pitch: ( 1 + this._charged_shots * 0.1 ) * ( 0.5 + GSPEED_MULT * 0.5 ), x:this.x, y:this.y, volume:0.5 });
+								}
+								else
+								{
+									sdSound.PlaySound({ name:'cube_attack', pitch: ( this.kind === sdCube.KIND_WHITE || this.kind === sdCube.KIND_YELLOW ) ? 0.5 : 1, x:this.x, y:this.y, volume:0.5 });
+								}
+
+								sdEntity.entities.push( bullet_obj );
+
+								if ( this.kind === sdCube.KIND_WHITE )
+								this.FireDirectionalBeams();
+
+							}, 300 );
 
 							this._charged_shots--;
-
-							if ( this.kind === sdCube.KIND_WHITE )
-							this.FireDirectionalBeams();
-
 							if ( this._charged_shots <= 0 )
 							{
 								this._charged_shots = ( this.kind === sdCube.KIND_WHITE ) ? 5 : 3;

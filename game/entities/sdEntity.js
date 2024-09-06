@@ -4353,7 +4353,7 @@ class sdEntity
 						}*/
 
 						//if ( ( typeof e.matter !== 'undefined' || typeof e._matter !== 'undefined' ) && !e._is_being_removed ) // Can appear as being removed as well...
-						if ( e._has_matter_props && !e._is_being_removed )
+						if ( e._has_matter_props && !e._is_being_removed && !e.UseEssenceForMatter())
 						{
 							//this.TransferMatter( e, how_much, GSPEED * 4 ); // Maximum efficiency over cables? At least prioritizing it should make sense. Maximum efficiency can cause matter being transfered to just like 1 connected entity
 
@@ -4444,7 +4444,7 @@ class sdEntity
 					let e = arr[ i ];
 					
 					//if ( ( typeof arr[ i ].matter !== 'undefined' || typeof arr[ i ]._matter !== 'undefined' ) && arr[ i ] !== this && !arr[ i ]._is_being_removed )
-					if ( e._has_matter_props && e !== this && !e._is_being_removed )
+					if ( e._has_matter_props && e !== this && !e._is_being_removed && !e.UseEssenceForMatter() )
 					{
 						if ( extend_cache_duration )
 						{
@@ -4709,6 +4709,10 @@ class sdEntity
 	{
 	}
 
+	UseEssenceForMatter() // Whether or not this entity receives matter through essence
+	{
+		return false;
+	}
 	WakeUpLiquidSources( connected_ents=null ) // Call this when entity loses some of its matter and needs hibernated nearby entities to wake up
 	{
 		if ( !connected_ents )
@@ -4878,7 +4882,7 @@ class sdEntity
 
 					if ( sdWorld.server_config.do_green_base_shielding_units_consume_essence )
 					if ( this_liquid.type === 4 ) // sdWater.TYPE_ESSENCE
-					if ( connected_ents[ i ].is( sdBaseShieldingUnit ) && connected_ents[ i ].type === 0 )
+					if ( ( connected_ents[ i ]._has_matter_props && connected_ents[ i ].UseEssenceForMatter() ) || ( connected_ents[ i ].is( sdBaseShieldingUnit ) && connected_ents[ i ].type === 0 ) )
 					this.TransferEssence( connected_ents[ i ], how_much, GSPEED ); // Maximum efficiency over cables? At least prioritizing it should make sense. Maximum efficiency can cause matter being transfered to just like 1 connected entity
 				}
 			}
@@ -5002,17 +5006,21 @@ class sdEntity
 		if ( to.onLiquidChanged !== sdEntity.prototype.onLiquidChanged )
 		to.onLiquidChanged( this );
 	}
-	TransferEssence( to, how_much, GSPEED ) // For entities that do not hold liquid
+	TransferEssence( to, how_much, GSPEED ) // For entities that do not hold liquid. Can transfer to matter entities if UseEssenceForMatter returns true
 	{
 		if ( !this._has_liquid_props )
 		return;
 
 		let is_bsu = ( to.is( sdWorld.entity_classes.sdBaseShieldingUnit ) );
 
-		if ( !is_bsu || to.type !== 0 )
+		if ( is_bsu )
+		if ( !sdWorld.server_config.do_green_base_shielding_units_consume_essence || to.type !== 0 )
 		return;
 
 		let this_liquid = ( this.liquid || this._liquid );
+
+		let to_matter = ( to.matter || to._matter || 0 );
+		let to_matter_max = ( to.matter_max || to._matter_max || 0 );
 
 		how_much = this_liquid.extra * how_much * GSPEED;
 
@@ -5020,6 +5028,10 @@ class sdEntity
 
 		if ( how_much > this_liquid.extra )
 		how_much = this_liquid.extra;
+
+		if ( !is_bsu )
+		if ( how_much > to_matter_max - to_matter )
+		how_much = to_matter_max - to_matter;
 
 		if ( isNaN( how_much ) )
 		{
@@ -5073,6 +5085,21 @@ class sdEntity
 		
 			to.matter_crystal = Math.min( Number.MAX_SAFE_INTEGER, to.matter_crystal + how_much );
 		}
+		else
+		if ( typeof to.matter !== 'undefined' )
+		{
+			if ( isNaN( to.matter ) )
+			debugger;
+		
+			to.matter += how_much;
+		}
+		else
+		{
+			if ( isNaN( to._matter ) )
+			debugger;
+		
+			to._matter += how_much;
+		}
 		
 		// Update update versions for static entities if matter property is public
 		
@@ -5081,8 +5108,11 @@ class sdEntity
 		this._update_version++;
 	
 		if ( typeof to._update_version !== 'undefined' )
-		if ( typeof to.matter_crystal !== 'undefined' )
+		if ( typeof to.matter_crystal !== 'undefined' || typeof to.matter !== 'undefined' || typeof to.matter_max !== 'undefined' )
 		to._update_version++;
+
+		if ( to.onMatterChanged !== sdEntity.prototype.onMatterChanged )
+		to.onMatterChanged( this );
 	}
 
 	/*Think( GSPEED )

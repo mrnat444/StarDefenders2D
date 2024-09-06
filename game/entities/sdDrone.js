@@ -1112,10 +1112,13 @@ class sdDrone extends sdEntity
 						let xx = from_entity.x + ( from_entity._hitbox_x1 + from_entity._hitbox_x2 ) / 2;
 						let yy = from_entity.y + ( from_entity._hitbox_y1 + from_entity._hitbox_y2 ) / 2;
 
+						let sx = ( from_entity.sx || 0 );
+						let sy = ( from_entity.sy || 0 );
+
 						if ( nears[ i ].ignore_line_of_sight || sdWorld.CheckLineOfSight( this.x, this.y, xx, yy, from_entity, null, sdCom.com_creature_attack_unignored_classes ) )
 						{
-							let dx = xx - this.x;
-							let dy = yy - this.y;
+							let dx = xx - this.x - sx * 5;
+							let dy = yy - this.y - sy * 5;
 
 							let di = sdWorld.Dist2D_Vector( dx, dy );
 
@@ -1600,64 +1603,71 @@ class sdDrone extends sdEntity
 							else
 							if ( this.type === sdDrone.DRONE_COUNCIL ) // Council support drones, heal and repair the council + council bomb which makes them a priority target
 							{
-								this._attack_timer = 60;
+								this._attack_timer = 30 * 4;
 								let entities = sdWorld.GetAnythingNear( this.x, this.y, 128, null, [ 'sdCharacter', 'sdJunk', 'sdCouncilMachine', 'sdCouncilIncinerator' ] );
 								let att_anim = false;
-								for ( let i = 0; i < entities.length; i++ )
-								{
-									if ( entities[ i ].GetClass() === 'sdCharacter' ) // Is it a character?
+
+								setTimeout(()=>{
+									if ( this._hea > 0 && !this._is_being_removed )
+									for ( let i = 0; i < entities.length; i++ )
 									{
-										if ( entities[ i ]._ai_team === 3 ) // Does it belong to Council faction?
+										if ( !sdWorld.inDist2D_Boolean( this.x, this.y, entities[ i ].x, entities[ i ].y, 128 * 1.5 ) )
+										continue;
+
+										if ( entities[ i ].GetClass() === 'sdCharacter' ) // Is it a character?
 										{
-											if ( entities[ i ].hea < entities[ i ].hmax ) // Is it missing armor?
+											if ( entities[ i ]._ai_team === 3 ) // Does it belong to Council faction?
 											{
-												entities[ i ].hea = Math.min( entities[ i ].hea + 250, entities[ i ].hmax ); // In that case, repair their armor
+												if ( entities[ i ].hea < entities[ i ].hmax ) // Is it missing armor?
+												{
+													entities[ i ].hea = Math.min( entities[ i ].hea + 250, entities[ i ].hmax ); // In that case, repair their armor
+													att_anim = true;
+													sdWorld.SendEffect({ x:this.x, y:this.y, x2:entities[ i ].x, y2:entities[ i ].y, type:sdEffect.TYPE_BEAM, color:'#fff000' });
+												}
+											}
+											else
+											if ( sdWorld.CheckLineOfSight( this.x, this.y, entities[ i ].x, entities[ i ].y, from_entity, null, sdCom.com_creature_attack_unignored_classes ) )
+											{
+													entities[ i ].DamageWithEffect( 30, this ); // Damage it
+													if ( entities[ i ].ghosting )
+													entities[ i ].TogglePlayerAbility(); // And remove it's invisibility
+													att_anim = true;
+													sdWorld.SendEffect({ x:this.x, y:this.y, x2:entities[ i ].x, y2:entities[ i ].y , type:sdEffect.TYPE_BEAM, color:'#ff0000' });
+											}
+										}
+										if ( entities[ i ].GetClass() === 'sdJunk' ) // Is it a junk entity?
+										{
+											if ( entities[ i ].type === 4 ) // Is it a council bomb?
+											if ( entities[ i ].hea < entities[ i ].hmax ) // Does it need repairing?
+											{
+												entities[ i ].hea = Math.min( entities[ i ].hea + 300, entities[ i ].hmax ); // In that case, repair the bomb
 												att_anim = true;
 												sdWorld.SendEffect({ x:this.x, y:this.y, x2:entities[ i ].x, y2:entities[ i ].y, type:sdEffect.TYPE_BEAM, color:'#fff000' });
 											}
 										}
-										else
-										if ( sdWorld.CheckLineOfSight( this.x, this.y, entities[ i ].x, entities[ i ].y, from_entity, null, sdCom.com_creature_attack_unignored_classes ) )
+										if ( entities[ i ].GetClass() === 'sdCouncilMachine' ) // Council portal machine
 										{
-												entities[ i ].DamageWithEffect( 30, this ); // Damage it
-												if ( entities[ i ].ghosting )
-												entities[ i ].TogglePlayerAbility(); // And remove it's invisibility
+											if ( entities[ i ].hea < entities[ i ].hmax ) // Does it need repairing?
+											{
+												entities[ i ].hea = Math.min( entities[ i ].hea + 300, entities[ i ].hmax ); // In that case, repair the machine
 												att_anim = true;
-												sdWorld.SendEffect({ x:this.x, y:this.y, x2:entities[ i ].x, y2:entities[ i ].y , type:sdEffect.TYPE_BEAM, color:'#ff0000' });
+												sdWorld.SendEffect({ x:this.x, y:this.y, x2:entities[ i ].x, y2:entities[ i ].y, type:sdEffect.TYPE_BEAM, color:'#fff000' });
+											}
 										}
-									}
-									if ( entities[ i ].GetClass() === 'sdJunk' ) // Is it a junk entity?
-									{
-										if ( entities[ i ].type === 4 ) // Is it a council bomb?
-										if ( entities[ i ].hea < entities[ i ].hmax ) // Does it need repairing?
+										if ( entities[ i ].GetClass() === 'sdCouncilIncinerator' ) // Council incinerator
 										{
-											entities[ i ].hea = Math.min( entities[ i ].hea + 600, entities[ i ].hmax ); // In that case, repair the bomb
-											att_anim = true;
-											sdWorld.SendEffect({ x:this.x, y:this.y, x2:entities[ i ].x, y2:entities[ i ].y, type:sdEffect.TYPE_BEAM, color:'#fff000' });
+											if ( entities[ i ].hea < entities[ i ]._hmax && entities[ i ].hea > 0 ) // Does it need repairing? (And is it alive?)
+											{
+												entities[ i ].hea = Math.min( entities[ i ].hea + 300, entities[ i ]._hmax ); // In that case, repair it
+												att_anim = true;
+												sdWorld.SendEffect({ x:this.x, y:this.y, x2:entities[ i ].x, y2:entities[ i ].y, type:sdEffect.TYPE_BEAM, color:'#fff000' });
+											}
 										}
 									}
-									if ( entities[ i ].GetClass() === 'sdCouncilMachine' ) // Council portal machine
-									{
-										if ( entities[ i ].hea < entities[ i ].hmax ) // Does it need repairing?
-										{
-											entities[ i ].hea = Math.min( entities[ i ].hea + 600, entities[ i ].hmax ); // In that case, repair the machine
-											att_anim = true;
-											sdWorld.SendEffect({ x:this.x, y:this.y, x2:entities[ i ].x, y2:entities[ i ].y, type:sdEffect.TYPE_BEAM, color:'#fff000' });
-										}
-									}
-									if ( entities[ i ].GetClass() === 'sdCouncilIncinerator' ) // Council incinerator
-									{
-										if ( entities[ i ].hea < entities[ i ]._hmax && entities[ i ].hea > 0 ) // Does it need repairing? (And is it alive?)
-										{
-											entities[ i ].hea = Math.min( entities[ i ].hea + 600, entities[ i ]._hmax ); // In that case, repair it
-											att_anim = true;
-											sdWorld.SendEffect({ x:this.x, y:this.y, x2:entities[ i ].x, y2:entities[ i ].y, type:sdEffect.TYPE_BEAM, color:'#fff000' });
-										}
-									}
-								}
-								if ( att_anim === true )
+								}, 1000 );
+								// if ( att_anim === true )
 								{
-									this.attack_frame = 2;
+									this.attack_frame = 4;
 								}
 							}
 							else

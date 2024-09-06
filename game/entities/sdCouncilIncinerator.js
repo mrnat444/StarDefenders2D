@@ -23,6 +23,7 @@ class sdCouncilIncinerator extends sdEntity
 	static init_class()
 	{
 		sdCouncilIncinerator.img_incinerator = sdWorld.CreateImageFromFile( 'sdCouncilIncinerator' );
+		sdEnemyMech.img_glow = sdWorld.CreateImageFromFile( 'hit_glow' );
 
 		
 		sdCouncilIncinerator.incinerator_counter = 0;
@@ -30,7 +31,7 @@ class sdCouncilIncinerator extends sdEntity
 		sdCouncilIncinerator.death_duration = 30;
 		sdCouncilIncinerator.post_death_ttl = 120;
 		
-		sdCouncilIncinerator.attack_range = 425;
+		sdCouncilIncinerator.attack_range = 125;
 		
 		sdCouncilIncinerator.reusable_vision_blocking_entities_array = [ this.name ];
 	
@@ -201,7 +202,7 @@ class sdCouncilIncinerator extends sdEntity
 		return false;
 	}
 	IncinerationAttack(){
-		let attack_entities = sdWorld.GetAnythingNear( this.x, this.y, 192 );
+		/*let attack_entities = sdWorld.GetAnythingNear( this.x, this.y, 192 );
 	
 		if ( attack_entities.length > 0 )
 		for ( let i = 0; i < attack_entities.length; i++ )
@@ -237,8 +238,42 @@ class sdCouncilIncinerator extends sdEntity
 					}
 				}
 			}
-		}
+		}*/
 		
+		for ( let i = 0; i < 4; i++ )
+		{
+			let an = this.tilt / 100 + ( Math.random() * 2 - 1 ) * Math.PI / 2;
+
+			let x1 = this.x + Math.cos( this.tilt / 100 ) * this.hitbox_x2;
+			let y1 = this.y + Math.sin( this.tilt / 100 ) * this.hitbox_x2;
+
+			let x2 = this.x + Math.cos( an ) * 250;
+			let y2 = this.y + Math.sin( an ) * 250;
+
+			if ( !sdWorld.CheckLineOfSight( this.x, this.y, x2, y2, this ) )
+			if ( sdWorld.last_hit_entity && !sdWorld.last_hit_entity._is_being_removed )
+			{
+				let e = sdWorld.last_hit_entity;
+
+				let temp = 100;
+				
+				if ( typeof e.hea !== 'undefined' )
+				temp = Math.max( temp, e.hea * 4 ); // Scale temperature with health
+				if ( typeof e._hea !== 'undefined' )
+				temp = Math.max( temp, e._hea * 4 ); // Scale temperature with health
+
+				e.DamageWithEffect( 10, this );
+				e.ApplyStatusEffect({ type: sdStatusEffect.TYPE_TEMPERATURE, t:temp, initiator: this }); // Set enemy on fire
+
+				x2 = e.x; + ( e._hitbox_x1 + e._hitbox_x2 ) / 2;
+				y2 = e.y; + ( e._hitbox_y1 + e._hitbox_y2 ) / 2;
+			}
+
+			sdWorld.SendEffect({ x:x1, y:y1, x2:x2, y2:y2, type:sdEffect.TYPE_BEAM, color:'#ff0000' });
+
+			sdSound.PlaySound({ name:'cube_attack', pitch: 4, x:this.x, y:this.y, volume:0.8 });
+		}
+
 		sdWorld.SendEffect({ 
 			x:this.x, 
 			y:this.y, 
@@ -250,7 +285,25 @@ class sdCouncilIncinerator extends sdEntity
 			color:'#ff0000'
 		});
 	}
-	Damage( dmg, initiator=null )
+	GetBleedEffectDamageMultiplier()
+	{
+		return sdEffect.TYPE_GLOW_HIT;
+	}
+	GetHitDamageMultiplier( x, y )
+	{
+		if ( this.hea > 0 )
+		{
+			var an = this.tilt / 100;
+			let di_to_head = sdWorld.Dist2D( x, y, this.x + Math.cos( an ) * this._hitbox_x2, this.y + Math.sin( an ) * this.hitbox_x2 );
+			// let di_to_body = sdWorld.Dist2D( x, y, this.x, this.y );
+
+			if ( di_to_head < 8 )
+			return 4;
+		}
+	
+		return 1;
+	}
+	Damage( dmg, initiator=null, headshot=false )
 	{
 		if ( !sdWorld.is_server )
 		return;
@@ -269,6 +322,15 @@ class sdCouncilIncinerator extends sdEntity
 
 		dmg = Math.abs( dmg );
 		
+		if ( headshot )
+		{
+			let an = this.tilt / 100 + Math.PI / 2 * Math.sign( Math.random() - 0.5 );
+			this.Impulse( Math.cos( an ) * this.mass * 4, Math.sin( an ) * this.mass * 4 );
+
+			if ( this.incinerator_attack_anim <= 0 )
+			this._incinerate_attack_timer = Math.max( this._incinerate_attack_timer - dmg, 0 );
+		}
+
 		let old_hp = this.hea;
 		
 		let was_alive = this.hea > 0;
@@ -563,7 +625,7 @@ class sdCouncilIncinerator extends sdEntity
 
 							this._move_dir_x = Math.cos( an );
 							this._move_dir_y = Math.sin( an );
-							this._move_dir_speed_scale = 1;
+							this._move_dir_speed_scale = ( this.incinerator_attack_anim > 0 ? 0.25 : 1 );
 
 							if ( !sdWorld.CheckLineOfSight( this.x, this.y, closest.x, closest.y, this, sdCom.com_visibility_ignored_classes, null ) )
 							{
@@ -661,8 +723,9 @@ class sdCouncilIncinerator extends sdEntity
 			
 			if ( sdWorld.is_server )
 			{
+				let below_half = this.hea < this._hmax / 2;
 				
-				this.tilt += GSPEED;
+				this.tilt += GSPEED * ( this.incinerator_attack_anim > 0 ? 0 : 2 );
 				
 				if ( this._incinerate_attack_timer <= 0 )
 				{
@@ -675,8 +738,8 @@ class sdCouncilIncinerator extends sdEntity
 			
 				if ( this.incinerator_attack_anim > 0 )
 				{
-					this.incinerator_attack_anim = Math.max( 0, this.incinerator_attack_anim - GSPEED );
-					if ( this.incinerator_attack_anim <= 30 && ( ( Math.round( this.incinerator_attack_anim % 10 ) === 1 ) ) ) // Should happen 3 times, at 21, 11 and 1
+					this.incinerator_attack_anim = Math.max( 0, this.incinerator_attack_anim - GSPEED * ( ( below_half && this.incinerator_attack_anim <= 30 ) ? 0.5 : 1 ) );
+					if ( this.incinerator_attack_anim <= 30 && ( ( Math.round( this.incinerator_attack_anim % 5 ) === 1 ) ) ) // Should happen 3 times, at 21, 11 and 1
 					this.IncinerationAttack();
 				}
 				else
@@ -704,8 +767,8 @@ class sdCouncilIncinerator extends sdEntity
 				}
 			
 				
-				if ( this.tilt > 3600 )
-				this.tilt -= 3600;
+				if ( this.tilt > Math.PI * 2 * 100 )
+				this.tilt -= Math.PI * 2 * 100;
 				if ( this._attack_timer <= 0 )
 				{
 					this._attack_timer = 3;
@@ -719,6 +782,7 @@ class sdCouncilIncinerator extends sdEntity
 					sdWorld.shuffleArray( targets );
 					
 					if ( this._left_attack_timer <= 0 )
+					if ( this.incinerator_attack_anim <= 0 )
 					for ( let i = 0; i < targets.length; i++ )
 					{
 						this._follow_target = targets[ i ];
@@ -730,7 +794,7 @@ class sdCouncilIncinerator extends sdEntity
 						if ( sdWorld.CheckLineOfSight( this.x - 20, this.y, targets[ i ].x, targets[ i ].y, sdCouncilIncinerator.reusable_vision_blocking_entities_array, sdEnemyMech.reusable_vision_block_ignored_entities_array ) ) // Can attack from left side?
 						{
 
-							this._left_attack_timer = 10;
+							this._left_attack_timer = ( Math.random() < 0.1 ? 20 : 5 );
 						
 							this.left_attack_anim = 6;
 
@@ -766,6 +830,7 @@ class sdCouncilIncinerator extends sdEntity
 					}
 					
 					if ( this._right_attack_timer <= 0 )
+					if ( this.incinerator_attack_anim <= 0 )
 					for ( let i = 0; i < targets.length; i++ )
 					{
 						this._follow_target = targets[ i ];
@@ -777,7 +842,7 @@ class sdCouncilIncinerator extends sdEntity
 						if ( sdWorld.CheckLineOfSight( this.x + 20, this.y, targets[ i ].x, targets[ i ].y, sdCouncilIncinerator.reusable_vision_blocking_entities_array, sdEnemyMech.reusable_vision_block_ignored_entities_array ) ) // Can attack from right side?
 						{
 
-							this._right_attack_timer = 10;
+							this._right_attack_timer = ( Math.random() < 0.25 ? 20 : 5 );
 						
 							this.right_attack_anim = 6;
 
@@ -867,6 +932,14 @@ class sdCouncilIncinerator extends sdEntity
 		let xx = this.hea > 0 ? 4 : 6;
 		ctx.rotate( this.tilt / 100 );
 		ctx.drawImageFilterCache( sdCouncilIncinerator.img_incinerator, xx * 48, 0, 48, 48, - 24, - 24, 48, 48);
+		if ( this.hea > 0 )
+		{
+			ctx.blend_mode = THREE.AdditiveBlending;
+			ctx.sd_tint_filter = this.incinerator_attack_anim > 0 ? [ 1, 0, 0 ] : [ 1, 1, 0 ];
+			ctx.drawImageFilterCache( sdEnemyMech.img_glow, -16 + this.hitbox_x2, -16, 32, 32 );
+			ctx.sd_tint_filter = null;
+			ctx.blend_mode = THREE.NormalBlending;
+		}
 		
 		ctx.rotate( - this.tilt / 100 );
 		xx = this.hea > 0 ? 0 : 5;

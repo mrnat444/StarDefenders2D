@@ -818,12 +818,12 @@ class sdSandWorm extends sdEntity
 						let head_entity = this.GetHeadEntity();
 
 						if ( this.kind === sdSandWorm.KIND_COUNCIL_WORM && head_entity === this ) // Council worm head fires yellow beams at visible target it's approaching
-						if ( !sdWorld.CheckLineOfSight( this.x, this.y, this.x + ( Math.cos( this._an + Math.PI ) * 360 ), this.y + ( Math.sin( this._an + Math.PI ) * 360 ), this ) )
+						/*if ( !sdWorld.CheckLineOfSight( this.x, this.y, this.x + ( Math.cos( this._an + Math.PI ) * 360 ), this.y + ( Math.sin( this._an + Math.PI ) * 360 ), this ) )
 						if ( sdWorld.last_hit_entity )
 						if ( sdWorld.last_hit_entity === this._current_target ||
 						 ( sdWorld.last_hit_entity.GetClass() === 'sdBlock' && !sdWorld.last_hit_entity.DoesRegenerate() ) ||
-						sdWorld.last_hit_entity.IsVehicle() ) // Shoot any kind of sdBlock if it's not dirt 
-						//if ( sdWorld.Dist2D( this.x, this.y, this._current_target.x, this._current_target.y ) <= 380 )
+						sdWorld.last_hit_entity.IsVehicle() ) // Shoot any kind of sdBlock if it's not dirt */
+						if ( sdWorld.Dist2D( this.x, this.y, this._current_target.x, this._current_target.y ) <= 380 )
 						if ( sdWorld.time > this._last_attack + 100 )
 						{
 						
@@ -854,7 +854,7 @@ class sdSandWorm extends sdEntity
 							bullet_obj.color = '#ffff00'; // Yellow color
 
 							sdEntity.entities.push( bullet_obj );
-							this._last_attack = sdWorld.time;
+							this._last_attack = sdWorld.time + ( Math.random() < 0.1 ? 2000 : 0 );
 
 							sdSound.PlaySound({ name:'cube_attack', pitch: 4, x:this.x, y:this.y, volume:0.8 });
 							//this.forced_x = ( this._current_target.x + ( this._current_target._hitbox_x1 + this._current_target._hitbox_x2 ) / 2 - this.x ) * 10;

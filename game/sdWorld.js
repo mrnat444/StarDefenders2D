@@ -122,7 +122,7 @@ class sdWorld
 		sdWorld.last_slowest_class = 'nothing';
 		
 		sdWorld.target_scale = 2; // Current one, this one depends on screen size
-		sdWorld.default_zoom = 2;
+		sdWorld.default_zoom = 1.5;
 		sdWorld.current_zoom = sdWorld.default_zoom; // Synced from server, for example when player is in vehicle or steering wheel
 		
 		
