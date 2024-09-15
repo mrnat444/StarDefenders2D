@@ -25,6 +25,7 @@ import sdEssenceExtractor from './sdEssenceExtractor.js';
 import sdDoor from './sdDoor.js';
 import sdBaseShieldingUnit from './sdBaseShieldingUnit.js';
 //import sdSteeringWheel from './sdSteeringWheel.js';
+import sdArea from './sdArea.js';
 
 
 /*
@@ -8911,6 +8912,80 @@ class sdGunClass
 				sdWorld.ReplaceColorInSDFilter_v2( remover_sd_filter, '#abcbf4', '#222222' );
 				
 				gun.sd_filter = remover_sd_filter;
+			}
+		};
+		
+		const lift_tool_reaction = ( bullet, target_entity )=>
+		{
+			let gun = bullet._gun;
+
+			if ( target_entity && !target_entity._is_being_removed )
+			if ( target_entity !== gun && target_entity !== gun._held_by )
+			if ( target_entity._hiberstate === sdEntity.HIBERSTATE_HIBERNATED || target_entity._hiberstate === sdEntity.HIBERSTATE_ACTIVE )
+			if ( target_entity._is_bg_entity === gun._is_bg_entity ) // Do not grab special items and spectators
+			// if ( gun._god || sdWorld.CheckLineOfSight( gun.x, gun.y, target_entity.x + ( target_entity._hitbox_x1 + target_entity._hitbox_x2 ) / 2, target_entity.y + ( target_entity._hitbox_y1 + target_entity._hitbox_y2 ) / 2, gun, null, [ 'sdBlock', 'sdDoor' ] ) )
+			if ( gun._god || sdArea.CheckPointDamageAllowed( target_entity.x + ( target_entity._hitbox_x1 + target_entity._hitbox_x2 ) / 2, target_entity.y + ( target_entity._hitbox_y1 + target_entity._hitbox_y2 ) / 2 ) )
+			{
+				if ( typeof target_entity.sx !== 'undefined' && typeof target_entity.sy !== 'undefined' )
+				if ( target_entity.HookAttempt() )
+				{
+					sdSound.PlaySound({ name:'teleport_ready', x:gun.x, y:gun.y, volume:0.5, pitch:2 });
+
+					gun.grabbed = target_entity;
+					gun.grabbed.PhysWakeUp();
+					gun.grabbed.SetHiberState( sdEntity.HIBERSTATE_ACTIVE );
+				}
+				/*else
+				{
+					if ( nears[ i ].is( sdWorld.entity_classes.sdMatterAmplifier ) || nears[ i ].is( sdWorld.entity_classes.sdCrystalCombiner ) )
+					{
+						sdSound.PlaySound({ name:'teleport_ready', x:this.x, y:this.y, volume:0.5, pitch:2 });
+
+						this.grabbed = nears[ i ];
+
+						nears[ i ].onMovementInRange( sdPlayerDrone.fake_bullet );
+
+						break;
+					}
+				}*/
+			}
+			
+			// Allow connection to sdJunk barrels/containers and insta-repair them as they will likely start losing health
+			if ( target_entity.is( sdJunk ) )
+			if ( target_entity.hea > target_entity.hmax - 5 )
+			target_entity.hea = target_entity.hmax;
+		}
+		sdGun.classes[ sdGun.CLASS_LIFT_TOOL = 138 ] = 
+		{
+			image: sdWorld.CreateImageFromFile( 'lift_tool' ),
+			sound: '',
+			title: 'Lift tool',
+			slot: 7,
+			reload_time: 5,
+			muzzle_x: null,
+			ammo_capacity: -1,
+			count: 1,
+			matter_cost: 400,
+			projectile_velocity: 80,
+			spawnable: true,
+			category: 'Equipment',
+			is_sword: false,
+			GetAmmoCost: ()=>
+			{
+				return 0; // Done in sdGun.onThink
+			},
+			projectile_properties: { 
+				time_left: 1, 
+				_damage: 1, 
+				_rail: true, 
+				color: 'transparent', 
+				_knock_scale: 0,
+				_custom_target_reaction: lift_tool_reaction,
+				_custom_target_reaction_protected: lift_tool_reaction
+			},
+			onShootAttempt: ( gun, shoot_from_scenario )=>
+			{
+				return gun.grabbed === null;
 			}
 		};
 

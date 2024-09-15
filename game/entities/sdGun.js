@@ -21,6 +21,7 @@ import sdRift from './sdRift.js';
 import sdWeaponBench from './sdWeaponBench.js';
 import sdWeaponMerger from './sdWeaponMerger.js';
 import sdStatusEffect from './sdStatusEffect.js';
+import sdCube from './sdCube.js';
 
 import sdGunClass from './sdGunClass.js';
 
@@ -39,6 +40,8 @@ class sdGun extends sdEntity
 		sdGun.img_muzzle_sheet = sdWorld.CreateImageFromFile( 'muzzle_sheet' );
 		
 		sdGun.img_present = sdWorld.CreateImageFromFile( 'present' );
+		
+		sdGun.img_glow = sdWorld.CreateImageFromFile( 'hit_glow' );
 		
 		sdGun.disowned_guns_ttl = 30 * 60 * 2; // Was 1 minute before, 2 now
 		
@@ -462,6 +465,8 @@ class sdGun extends sdEntity
 		this._combo_timer = 0;// Goes to 0, resets combo when it reaches 0
 		//this.ttl = params.ttl || sdGun.disowned_guns_ttl;
 		this.extra = ( params.extra === undefined ) ? 0 : params.extra; // shard value will be here
+
+		this.grabbed = null; // For Lift Tool
 
 		this.sd_filter = ( params.sd_filter === undefined ) ? null : params.sd_filter;
 
@@ -1277,6 +1282,86 @@ class sdGun extends sdEntity
 		
 		GSPEED = sdGun.HandleTimeAmplification( this, GSPEED );
 
+		if ( sdWorld.is_server || this._held_by === sdWorld.my_entity )
+		if ( this.class === sdGun.CLASS_LIFT_TOOL )
+		{
+			if ( this._held_by && 
+				!this._held_by._is_being_removed && 
+				this._held_by.IsPlayerClass() && 
+				this._held_by.gun_slot === this.GetSlot() &&
+				this._held_by._key_states.GetKey( 'Mouse1' ) && 
+				( !this.grabbed || ( this.grabbed && sdWorld.inDist2D_Boolean( this._held_by.x, this._held_by.y, this.grabbed.x, this.grabbed.y, 120 ) ) ) && 
+				this._held_by.matter > 0 )
+			{
+				if ( this.grabbed )
+				if ( this.grabbed._is_being_removed )
+				{
+					this.grabbed = null;
+					
+					if ( this._held_by._key_states.GetKey( 'Mouse1' ) )
+					this._held_by._key_states.SetKey( 'Mouse1', 0 );
+				}
+
+				if ( this.grabbed === null ) // this.grabbed is set in _custom_target_reaction
+				{
+				}
+				else
+				if ( typeof this.grabbed.sx !== 'undefined' && typeof this.grabbed.sy !== 'undefined' ) // Amplifier and combiner tests
+				{
+					let look_x = this._held_by.look_x;
+					let look_y = this._held_by.look_y;
+
+					let xx = look_x - this._held_by.x;
+					let yy = look_y - this._held_by.y;
+					let di_look = sdWorld.Dist2D_Vector( xx, yy );
+					if ( di_look > 80 )
+					{
+						xx = xx / di_look * 80;
+						yy = yy / di_look * 80;
+						look_x = this._held_by.x + xx;
+						look_y = this._held_by.y + yy;
+					}
+
+
+
+					let p = 1.5;
+
+					let dx = ( look_x - this.grabbed.x ) + ( this._held_by.sx - this.grabbed.sx ) * 10;
+					let dy = ( look_y - this.grabbed.y ) + ( this._held_by.sy - this.grabbed.sy ) * 10;
+
+					let di = sdWorld.Dist2D_Vector( dx, dy );
+
+					if ( di > 10 )
+					{
+						dx /= di / 10;
+						dy /= di / 10;
+					}
+
+					this.grabbed.Impulse( dx * p, 
+										  dy * p );
+
+
+					if ( this.grabbed.is( sdCube ) )
+					this.grabbed.PlayerIsHooked( this._held_by, GSPEED );
+
+					if ( sdWorld.is_server )
+					this._held_by.matter = Math.max( 0, this._held_by.matter - Math.min( 10, di ) * 0.04 * GSPEED );
+				}
+			}
+			else
+			{
+				if ( this.grabbed )
+				{
+					sdSound.PlaySound({ name:'teleport_ready', x:this.x, y:this.y, volume:2, pitch:0.5 });
+					this.grabbed = null;
+
+					if ( this._held_by )
+					if ( this._held_by._key_states.GetKey( 'Mouse1' ) )
+					this._held_by._key_states.SetKey( 'Mouse1', 0 );
+				}
+			}
+		}
+		
 		if ( this.ammo_left === -123 )
 		{
 			if ( sdGun.classes[ this.class ].ammo_capacity === undefined )
@@ -1538,6 +1623,39 @@ class sdGun extends sdEntity
 	}
 	Draw( ctx, attached )
 	{
+		// if ( !attached )
+		// if ( this.hea > 0 )	
+		if ( this.grabbed )
+		{
+			ctx.save();
+			ctx.blend_mode = THREE.AdditiveBlending;
+			
+			ctx.filter = 'none';
+			ctx.globalAlpha = 0.5;
+			
+			if ( this._held_by )
+			{
+				if ( attached )
+				{
+					ctx.globalAlpha = 0.5;
+
+					ctx.drawImageFilterCache( sdGun.img_glow, - 16 + 8, - 16, 32, 32 );
+				}
+				else
+				{
+					ctx.globalAlpha = 0.5;
+	
+					ctx.translate( this.grabbed.x + ( this.grabbed._hitbox_x1 + this.grabbed._hitbox_x2 ) / 2 - this.x, this.grabbed.y + ( this.grabbed._hitbox_y1 + this.grabbed._hitbox_y2 ) / 2 - this.y );
+					
+					ctx.drawImageFilterCache( sdGun.img_glow, - 16, - 16, 32, 32 );
+				}
+			}
+			
+			ctx.globalAlpha = 1;
+			ctx.blend_mode = THREE.NormalBlending;
+			ctx.restore();
+		}
+		
 		this.UpdateHolderClientSide();
 		
 		let has_class = sdGun.classes[ this.class ];
@@ -1551,7 +1669,7 @@ class sdGun extends sdEntity
 			
 			ctx.apply_shading = ( has_class.apply_shading === undefined ) ? true : has_class.apply_shading;
 			
-			if ( this.muzzle > 0 )
+			if ( this.muzzle > 0 || this.grabbed )
 			{
 				ctx.apply_shading = false;
 			}
