@@ -19,12 +19,14 @@ class sdDropPod extends sdEntity
 		sdDropPod.img_pod_kvt = sdWorld.CreateImageFromFile( 'sdDropPod_kvt' ); // Might be better to use sprite sheets for future purposes - Booraz149
 		sdDropPod.img_pod_sd = sdWorld.CreateImageFromFile( 'sdDropPod_sd' );
 		
-		sdDropPod.pod_counter = 0;
+		sdDropPod.kvt_pod_counter = 0;
+		sdDropPod.sd_pod_counter = 0;
 
 		sdDropPod.ignored_classes_arr = [ 'sdGun', 'sdBullet', 'sdCharacter' ];
 		
 		sdDropPod.TYPE_KVT = 0; // First pod type is KVT
 		sdDropPod.TYPE_SD = 1; // Star Defenders pod type
+		
 		sdWorld.entity_classes[ this.name ] = this; // Register for object spawn
 	}
 	get hitbox_x1() { return -12; }
@@ -71,7 +73,7 @@ class sdDropPod extends sdEntity
 		
 		this.type = params.type || sdDropPod.TYPE_KVT; // Default to KVT Pod if no parameters gave it other properties
 		
-		this.hmax = 4000; // was 6000
+		this.hmax = 2000; // was 6000, then 4000
 		this.hea = this.hmax;
 		this._regen_timeout = 0;
 		//this.matter_max = 5500;
@@ -102,7 +104,11 @@ class sdDropPod extends sdEntity
 		};
 		*/
 		
-		sdDropPod.pod_counter++;
+		if ( this.type === sdDropPod.TYPE_KVT )
+		sdDropPod.kvt_pod_counter++;
+	
+		if ( this.type === sdDropPod.TYPE_SD )
+		sdDropPod.sd_pod_counter++;
 	}
 	get mass()
 	{
@@ -303,6 +309,7 @@ class sdDropPod extends sdEntity
 		if ( this.uses <= 0 )
 		{
 			this.empty = true;
+			this.hea = Math.min( this.hea, 100 );
 		}
 	}
 	Loot()
@@ -454,6 +461,7 @@ class sdDropPod extends sdEntity
 		if ( this.uses <= 0 )
 		{
 			this.empty = true;
+			this.hea = Math.min( this.hea, 100 );
 		}
 	}
 
@@ -493,6 +501,7 @@ class sdDropPod extends sdEntity
 					for ( let i = 0; i < sdWorld.sockets.length; i++ )
 					{
 						if ( sdWorld.sockets[ i ].character )
+						if ( sdWorld.sockets[ i ].character.is( sdCharacter ) )
 						if ( sdWorld.Dist2D( this.x, this.y, sdWorld.sockets[ i ].character.x , sdWorld.sockets[ i ].character.y ) < 300 ) // If close enough
 						{
 							player_to_greet = sdWorld.sockets[ i ].character;
@@ -625,7 +634,11 @@ class sdDropPod extends sdEntity
 	
 	onRemove() // Class-specific, if needed
 	{
-		sdDropPod.pod_counter--; // Entity counters should be inside onRemove since some things could remove them without damaging them
+		if ( this.type === sdDropPod.TYPE_KVT )
+		sdDropPod.kvt_pod_counter--;
+	
+		if ( this.type === sdDropPod.TYPE_SD )
+		sdDropPod.sd_pod_counter--;
 		
 		if ( this._broken )
 		sdWorld.BasicEntityBreakEffect( this, 25, 3, 0.75, 0.75 );

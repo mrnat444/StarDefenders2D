@@ -92,22 +92,39 @@ class sdSandWorm extends sdEntity
 	{
 		super( params );
 		
+		if ( params.tag )
+		{
+			if ( params.tag === 'corrupted' )
+			params.tag = sdSandWorm.KIND_CORRUPTED_WORM;
+			
+			if ( typeof params.tag === 'string' )
+			//if ( sdSandWorm[ params.tag ] !== undefined )
+			params.kind = sdSandWorm[ params.tag ];
+			else
+			if ( typeof params.tag === 'number' )
+			{
+			}
+			else
+			debugger;
+		}
+		
 		this.sx = 0;
 		this.sy = 0;
 
 		this.kind = params.kind || 0;
 		
-		let is_corrupted = params.tag === 'corrupted';
+		this._ai_team = -1; // Default set to -1
 
-		if ( is_corrupted )
-		this.kind = sdSandWorm.KIND_CORRUPTED_WORM;
+		//if ( is_corrupted )
+		//this.kind = sdSandWorm.KIND_CORRUPTED_WORM;
 
 		this.scale = params.scale || Math.max( 0.6, Math.random() * 2 );
 		
 		if ( this.kind === sdSandWorm.KIND_COUNCIL_WORM )
 		{
 			this._regen_timeout = 0; // For HP regen
-			this.scale = 1;
+			this.scale = params.scale || 1;
+			this._ai_team = 3; // So other Council stuff doesn't attack it
 		}
 		
 		if ( this.kind === sdSandWorm.KIND_CRYSTAL_HUNTING_WORM )
@@ -115,7 +132,7 @@ class sdSandWorm extends sdEntity
 			this.scale = 0.6;
 		}
 
-		this._hmax = ( this.kind === sdSandWorm.KIND_COUNCIL_WORM ? 12 : this.kind === sdSandWorm.KIND_CORRUPTED_WORM ? 1.5 : 1 ) * 700 * Math.pow( this.scale, 2 );// Bigger worms = more health
+		this._hmax = ( this.kind === sdSandWorm.KIND_COUNCIL_WORM ? ( this.scale >= 1 ? 12 : 4 ) : this.kind === sdSandWorm.KIND_CORRUPTED_WORM ? 1.5 : 1 ) * 700 * Math.pow( this.scale, 2 );// Bigger worms = more health
 		this._hea = this._hmax;
 
 		this._regen_timeout = 0; // For council worm HP regen, for some reason it claims object is not extensible if placed in brackets below which check if the worm is council one.
@@ -148,6 +165,8 @@ class sdSandWorm extends sdEntity
 		
 		this._last_found_target = 0; // When has it last time found a target? Used for Crystal Hunting Worm.
 		
+		this._hibernation_check_timer = 30;
+		
 		sdSandWorm.worms_tot++;
 		
 		this.hue = ~~( Math.random() * 360 );
@@ -158,9 +177,21 @@ class sdSandWorm extends sdEntity
 		this._can_spawn_more = true;
 	}
 	
-	isWaterDamageResistant()
+	isFireAndAcidDamageResistant()
 	{
 		return ( this.kind === sdSandWorm.KIND_CRYSTAL_HUNTING_WORM );
+	}
+	
+	CanBuryIntoBlocks()
+	{
+		if ( this.kind === sdSandWorm.KIND_COUNCIL_WORM )
+		return 0;
+		
+		if ( this.kind === sdSandWorm.KIND_CORRUPTED_WORM )
+		return 2;
+	
+	
+		return 1; // 0 = no blocks, 1 = natural blocks, 2 = corruption, 3 = flesh blocks
 	}
 	
 	onBeforeRemove()
@@ -369,6 +400,7 @@ class sdSandWorm extends sdEntity
 				let sx = this.sx;
 				let sy = this.sy;
 
+				if ( this.scale >= 1 || ( Math.random() < 0.15 ) ) // Small ones have smaller chance to drop shards
 				setTimeout(()=>{ // Hacky, without this item does not appear to be pickable or interactable...
 					let shard = new sdGun({ x:x, y:y, class:sdGun.CLASS_METAL_SHARD });
 					shard.sx = sx;
@@ -377,11 +409,23 @@ class sdSandWorm extends sdEntity
 
 				}, 500 );
 
-				if ( this === head_entity && Math.random() < 0.025 ) // 2.5% chance for Council Worm gun
+				if ( this === head_entity && ( ( this.scale >= 1 && Math.random() < 0.05 ) || ( this.scale < 1 && Math.random() < 0.005 ) ) ) // 5% chance for Council Immolator, 0.5% if smaller worm
 				setTimeout(()=>{ // Hacky, without this gun does not appear to be pickable or interactable...
 
 				let gun;
 				gun = new sdGun({ x:x, y:y, class:sdGun.CLASS_COUNCIL_IMMOLATOR });
+
+				//gun.sx = sx;
+				//gun.sy = sy;
+				sdEntity.entities.push( gun );
+
+				}, 500 );
+				
+				if ( this === head_entity && ( ( this.scale >= 1 && Math.random() < 0.02 ) || ( this.scale < 1 && Math.random() < 0.002 ) ) ) // 2% chance for Exalted core, 0.2% if smaller worm
+				setTimeout(()=>{ // Hacky, without this gun does not appear to be pickable or interactable...
+
+				let gun;
+				gun = new sdGun({ x:x, y:y, class:sdGun.CLASS_EXALTED_CORE });
 
 				//gun.sx = sx;
 				//gun.sy = sy;
@@ -425,6 +469,7 @@ class sdSandWorm extends sdEntity
 	GetRandomCrystal()
 	{
 		let ent = sdEntity.GetRandomActiveEntity();
+		if ( ent )
 		if ( ent.is( sdCrystal ) ) // Is it a crystal?
 			{
 				if ( this.IsEntFarEnough( ent ) && sdWorld.Dist2D( this.x, this.y, ent.x, ent.y ) < 2000 ) // Crystal far enough from BSUs and players, but not too far from the worm?
@@ -434,6 +479,84 @@ class sdSandWorm extends sdEntity
 				}
 			}
 		return null;
+	}
+	
+	AttemptBlockBurying( custom_ent_tag = null )
+	{
+		// Did it this way, though maybe it should just have a special check if class is sdSandWorm inside sdEntity - Booraz
+		if ( !sdWorld.is_server || this.CanBuryIntoBlocks() === 0 )
+		return;
+	
+		let no_players_near = true;
+		let i;			
+		for ( i = 0; i < sdWorld.sockets.length; i++ )
+		if ( sdWorld.sockets[ i ].character )
+		{
+			if ( sdWorld.inDist2D_Boolean( sdWorld.sockets[ i ].character.x, sdWorld.sockets[ i ].character.y, this.x, this.y, 500 ) ) // A player is too close to it?
+			{
+				no_players_near = false; // Prevent hibernation
+				break;
+			}
+		}
+		if ( no_players_near )
+		{
+			let potential_hibernation_blocks = sdWorld.GetAnythingNear( this.x, this.y, 96, null, [ 'sdBlock' ] ); // Look for blocks
+			// sdWorld.shuffleArray( potential_hibernation_blocks ); // Not sure if needed? Though check will mostly start from left to right of the entity.
+			for ( i = 0; i < potential_hibernation_blocks.length; i++ )
+			{
+				
+				let block = potential_hibernation_blocks[ i ];
+							
+				if ( block )
+				{
+					if ( this.CanBuryIntoBlocks() === 1 ) // 1st scenario, natural blocks
+					{
+						if ( !block._is_being_removed && block._natural && !block._contains_class && block.material !== 7 && block.material !== 9 ) // Natural block, no flesh or corruption and nothing inside it?
+						{
+							if ( !custom_ent_tag )
+							block._contains_class = this.GetClass(); // Put the entity in there
+							else
+							block._contains_class = custom_ent_tag;
+						
+							this.Damage( this._hea );
+							this.remove(); // Disappear
+							this._broken = false;
+							break;
+						}
+					}
+					if ( this.CanBuryIntoBlocks() === 2 ) // 2nd scenario, corrupted blocks
+					{
+						if ( !block._is_being_removed && block._natural && !block._contains_class && block.material === 7 ) // Natural corrupted block and nothing inside it?
+						{
+							if ( !custom_ent_tag )
+							block._contains_class = this.GetClass(); // Put the entity in there
+							else
+							block._contains_class = custom_ent_tag;
+						
+							this.Damage( this._hea );
+							this.remove(); // Disappear
+							this._broken = false;
+							break;
+						}
+					}
+					if ( this.CanBuryIntoBlocks() === 3 ) // 3rd scenario, flesh blocks
+					{
+						if ( !block._is_being_removed && block._natural && !block._contains_class && block.material === 9 ) // Natural flesh block and nothing inside it?
+						{
+							if ( !custom_ent_tag )
+							block._contains_class = this.GetClass(); // Put the entity in there
+							else
+							block._contains_class = custom_ent_tag;
+						
+							this.Damage( this._hea );
+							this.remove(); // Disappear
+							this._broken = false;
+							break;
+						}
+					}
+				}
+			}
+		}
 	}
 	
 	GetIgnoredEntityClasses() // Null or array, will be used during motion if one is done by CanMoveWithoutOverlap or ApplyVelocityAndCollisions
@@ -481,6 +604,7 @@ class sdSandWorm extends sdEntity
 					let sx = this.sx;
 					let sy = this.sy;
 
+					if ( this.scale >= 1 || ( Math.random() < 0.15 ) ) // Small ones have smaller chance to drop shards
 					setTimeout(()=>{ // Hacky, without this item does not appear to be pickable or interactable...
 						let shard = new sdGun({ x:x, y:y, class:sdGun.CLASS_METAL_SHARD });
 						shard.sx = sx;
@@ -945,6 +1069,26 @@ class sdSandWorm extends sdEntity
 			
 			if ( !in_water )
 			this.sy += sdWorld.gravity * GSPEED;
+		}
+		
+		if ( sdWorld.is_server )
+		{
+			if ( this._last_attack < sdWorld.time - ( 1000 * 60 * 3 ) ) // 3 minutes since last attack?
+			{
+				this._hibernation_check_timer -= GSPEED;
+				
+				if ( this._hibernation_check_timer < 0 && ( this.GetHeadEntity() === this ) )
+				{
+					this._hibernation_check_timer = 30 * 30; // Check if hibernation is possible every 30 seconds
+					
+					if ( this.kind === sdSandWorm.KIND_NORMAL_WORM || this.kind === sdSandWorm.KIND_SPIKY_WORM )
++					this.AttemptBlockBurying(); // Attempt to hibernate inside nearby blocks
+					if ( this.kind === sdSandWorm.KIND_CORRUPTED_WORM )
++					this.AttemptBlockBurying( 'sdSandWorm.corrupted' );
+					if ( this.kind === sdSandWorm.KIND_CRYSTAL_HUNTING_WORM )
++					this.AttemptBlockBurying( 'sdSandWorm.KIND_CRYSTAL_HUNTING_WORM' );
+				}
+			}
 		}
 		
 		this.ApplyVelocityAndCollisions( GSPEED, 0, true, 1, ( this.death_anim === 0 ) ? this.CustomGroundFiltering : null );

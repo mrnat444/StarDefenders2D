@@ -51,6 +51,12 @@ class sdLongRangeTeleport extends sdEntity
 		
 		sdLongRangeTeleport.teleported_items = new WeakSet(); // Will be used to prevent rewards for teleporting beacons to other servers rather than destroying them
 		
+		sdLongRangeTeleport.ignored_class_pointers = new Set();
+		sdLongRangeTeleport.ignored_class_pointers.add( 'sdTask' );
+		sdLongRangeTeleport.ignored_class_pointers.add( 'sdSensorArea' );
+		sdLongRangeTeleport.ignored_class_pointers.add( 'sdBG' );
+		//sdLongRangeTeleport.ignored_class_pointers.add( 'sdStatusEffect' );
+		
 		sdWorld.entity_classes[ this.name ] = this; // Register for object spawn
 	}
 	get hitbox_x1() { return -48; }
@@ -800,6 +806,13 @@ class sdLongRangeTeleport extends sdEntity
 			sdEntity.entities.push( core );
 		}
 		
+		if ( rewards === 'CLAIM_UPGRADE_STATION_CHIP' )
+		{
+			let chipset;
+			chipset = new sdGun({ x:this.x, y:this.y - 16, class:sdGun.CLASS_UPGRADE_STATION_CHIPSET });
+			sdEntity.entities.push( chipset );
+		}
+		
 		sdWorld.SendEffect({ x:this.x, y:this.y - 24, type:sdEffect.TYPE_TELEPORT });
 		sdSound.PlaySound({ name:'teleport', x:this.x, y:this.y, volume:0.5 });
 		
@@ -813,7 +826,11 @@ class sdLongRangeTeleport extends sdEntity
 		let current_frame = globalThis.GetFrame();
 
 		for ( let i = 0; i < ents_to_push.length; i++ )
-		snapshots.push( ents_to_push[ i ].GetSnapshot( current_frame, true ) );
+		{
+			ents_to_push[ i ].onBeforeLongRangeTeleport( this );
+			
+			snapshots.push( ents_to_push[ i ].GetSnapshot( current_frame, true ) );
+		}
 	
 		if ( ents_to_push.length > 0 )
 		sdSound.PlaySound({ name:'teleport', x:this.x, y:this.y, volume:0.5 });
@@ -915,7 +932,9 @@ class sdLongRangeTeleport extends sdEntity
 			sdWorld.unresolved_entity_pointers[ i ][ 3 ] = net_id_remap.get( sdWorld.unresolved_entity_pointers[ i ][ 3 ] );
 			else
 			{
+				if ( !sdLongRangeTeleport.ignored_class_pointers.has( sdWorld.unresolved_entity_pointers[ i ]._class ) )
 				trace( 'Warning: Pointer is impossible to resolve - entity was not recreated in new world. Pointer will likely be set to null. Pointer: ', sdWorld.unresolved_entity_pointers[ i ] );
+			
 				sdWorld.unresolved_entity_pointers[ i ][ 3 ] = -1;
 			}
 		}
@@ -1168,7 +1187,9 @@ class sdLongRangeTeleport extends sdEntity
 						command_name === 'CLAIM_REWARD_CRYSTALS' ||
 						command_name === 'CLAIM_REWARD_CONTAINER' || 
 						command_name === 'CLAIM_REWARD_AD' ||
-						command_name === 'CLAIM_MERGER_CORE'
+						command_name === 'CLAIM_MERGER_CORE' ||
+						command_name === 'CLAIM_UPGRADE_STATION_CHIP'
+						
 					)
 				{
 					if ( !this.is_server_teleport )
@@ -1385,7 +1406,7 @@ class sdLongRangeTeleport extends sdEntity
 											else
 											{
 												for ( let i = 0; i < collected_entities_array.length; i++ )
-												exectuter_character.GiveScore( sdEntity.SCORE_REWARD_COMMON_TASK, collected_entities_array[ i ] );
+												exectuter_character.GiveScore( sdEntity.SCORE_REWARD_TASK_ITEM_FUNCTION( collected_entities_array[ i ] ), collected_entities_array[ i ] );
 
 												this.matter = 0;
 											}
@@ -1756,6 +1777,7 @@ class sdLongRangeTeleport extends sdEntity
 							this.AddContextOption( 'Claim rewards ( crystals )', 'CLAIM_REWARD_CRYSTALS', [] );
 							this.AddContextOption( 'Claim rewards ( advanced matter container )', 'CLAIM_REWARD_CONTAINER', [] );
 							this.AddContextOption( 'Claim rewards ( merger core )', 'CLAIM_MERGER_CORE', [] );
+							this.AddContextOption( 'Claim rewards ( upgrade station chipset )', 'CLAIM_UPGRADE_STATION_CHIP', [] );
 						}
 
 						if ( sdTask.tasks[ i ].mission === sdTask.MISSION_LRTP_EXTRACTION )

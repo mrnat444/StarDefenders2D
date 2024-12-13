@@ -109,6 +109,7 @@ class sdBlock extends sdEntity
 		SpawnSizes( sdBlock.TEXTURE_ID_WHITE_BRICK = tc++,			'wall_white_brick',			0 );
 		SpawnSizes( sdBlock.TEXTURE_ID_DARK_BRICK = tc++,			'wall_dark_brick',			0 );
 		SpawnSizes( sdBlock.TEXTURE_ID_FULL_WHITE_BRICK = tc++,		'wall_full_bright_brick',	0 );
+		SpawnSizes( sdBlock.TEXTURE_ID_TZYRG_WALL = tc++,			'wall_tzyrg',				0 );
 		
 		
 		// TODO: Rework other walls like this. Also - important to standartise all reinforced blocks as well as extra reinforcements through items
@@ -295,6 +296,41 @@ class sdBlock extends sdEntity
 	get hitbox_y1() { return 0; }
 	get hitbox_y2() { return this.height; }
 	
+	get title()
+	{
+		let mat = ( this.material || 0 );
+		let tex = ( this.texture_id || 0 );
+	
+		if ( tex === sdBlock.TEXTURE_ID_GLASS )
+		return 'Glass';
+		
+		if ( tex === sdBlock.TEXTURE_ID_CAGE )
+		return 'Cage';
+	
+		if ( mat === sdBlock.MATERIAL_WALL )
+		return 'Wall';
+	
+		if ( mat === sdBlock.MATERIAL_SHARP )
+		return 'Trap';
+	
+		if ( mat === sdBlock.MATERIAL_TRAPSHIELD )
+		return 'Shield';
+	
+		if ( mat === sdBlock.MATERIAL_ROCK )
+		return 'Rock';
+	
+		if ( mat === sdBlock.MATERIAL_SAND )
+		return 'Sand';
+	
+		if ( mat === sdBlock.MATERIAL_FLESH )
+		return 'Flesh';
+	
+		if ( mat === sdBlock.MATERIAL_SNOW )
+		return 'Snow';
+	
+		return 'Ground';
+	}
+	
 	DrawIn3D()
 	{
 		if ( this.material === sdBlock.MATERIAL_TRAPSHIELD || this.texture_id === sdBlock.TEXTURE_ID_GLASS )
@@ -313,7 +349,7 @@ class sdBlock extends sdEntity
 	}
 	
 	get hard_collision()
-	{ return this.material !== sdBlock.MATERIAL_SHARP; }
+	{ return this.material !== sdBlock.MATERIAL_SHARP && this.material !== sdBlock.MATERIAL_PRESET_SPECIAL_FORCE_AIR; }
 	
 	get is_static() // Static world objects like walls, creation and destruction events are handled manually. Do this._update_version++ to update these
 	{ return true; }
@@ -366,6 +402,9 @@ class sdBlock extends sdEntity
 				{
 					this._last_damage = sdWorld.time;
 					sdSound.PlaySound({ name:'shield', x:this.x, y:this.y, volume:1 });
+					
+					//if ( initiator )
+					//sdWorld.SendEffect({ x:initiator.x, y:initiator.y, type:sdEffect.TYPE_SHIELD });
 				}
 			}
 			
@@ -652,7 +691,7 @@ class sdBlock extends sdEntity
 								let parts = this._contains_class.split( '.' );
 								this._contains_class = parts[ 0 ];
 
-								let params = { x: this.x + this.width / 2, y: this.y + this.height / 2, tag:( parts.length > 1 )?parts[1]:null };
+								let params = { x: this.x + this.width / 2, y: this.y + this.height / 2, tag:( parts.length > 1 )?parts[1]:null, from_ground:this };
 
 								if ( this._contains_class_params )
 								{
@@ -813,6 +852,10 @@ class sdBlock extends sdEntity
 		this.reinforced_frame = 0;
 		this.HandleReinforceUpdate();
 		
+		if ( params.skip_hiberstate_and_hash_update )
+		{
+		}
+		else
 		if ( this.material !== sdBlock.MATERIAL_CORRUPTION && 
 			 this.material !== sdBlock.MATERIAL_FLESH && 
 			 this._hea >= this._hmax )
@@ -824,7 +867,7 @@ class sdBlock extends sdEntity
 	}
 	ExtraSerialzableFieldTest( prop )
 	{
-		return ( prop === '_plants' || prop === '_contains_class_params' || prop === '_shielded' );
+		return ( prop === '_plants' || prop === '_contains_class_params' || prop === '_shielded' || prop === '_owner' );
 	}
 	ValidatePlants( must_include=null ) // foliage / grass
 	{
@@ -1013,7 +1056,21 @@ class sdBlock extends sdEntity
 	}
 	GetBleedEffect()
 	{
-		return ( this.material === sdBlock.MATERIAL_FLESH ) ? sdEffect.TYPE_BLOOD : sdEffect.TYPE_WALL_HIT;
+		if ( this.material === sdBlock.MATERIAL_FLESH )
+		return sdEffect.TYPE_BLOOD;
+	
+		if ( this.material === sdBlock.MATERIAL_TRAPSHIELD )
+		return sdEffect.TYPE_SHIELD;
+	
+		if ( this.material === sdBlock.MATERIAL_SAND || 
+			 this.material === sdBlock.MATERIAL_GROUND || 
+			 this.material === sdBlock.MATERIAL_ROCK ||
+			 this.material === sdBlock.MATERIAL_CORRUPTION || 
+			 this.material === sdBlock.MATERIAL_SNOW ||
+			 this.material === sdBlock.MATERIAL_CRYSTAL_SHARDS )
+		return sdEffect.TYPE_DIRT_HIT;
+	
+		return sdEffect.TYPE_WALL_HIT;
 	}
 	//RequireSpawnAlign() 
 	//{ return true; }
@@ -1640,6 +1697,30 @@ class sdBlock extends sdEntity
 						new_bg._remove();
 					}
 				}
+
+				// Recursively turn these into default ground
+				if ( this.material === sdBlock.MATERIAL_BUGGED_CHUNK )
+				{
+					sdTimer.ExecuteWithDelay( ( timer )=>{
+						
+						let nears = sdWorld.GetAnythingNear( this.x + this.width / 2, this.y + this.height / 2, 16 );
+						for ( let i = 0; i < nears.length; i++ )
+						{
+							let e = nears[ i ];
+							if ( e instanceof sdBlock )
+							if ( e.material === sdBlock.MATERIAL_BUGGED_CHUNK )
+							{
+								e.remove();
+							}
+						}
+					
+					}, 400 + Math.random() * 200 );
+					
+					let block = sdWorld.AttemptWorldBlockSpawn( this.x, this.y, false );
+
+					if ( block )
+					sdWorld.UpdateHashPosition( block, false, true );
+				}
 			}
 
 			
@@ -1667,6 +1748,7 @@ class sdBlock extends sdEntity
             
 			}
 			if ( this.material !== sdBlock.MATERIAL_TRAPSHIELD )
+			if ( this.material !== sdBlock.MATERIAL_BUGGED_CHUNK )
 			if ( this._net_id !== undefined ) // Was ever synced rather than just temporarily object for shop
 			if ( this._broken )
 			{

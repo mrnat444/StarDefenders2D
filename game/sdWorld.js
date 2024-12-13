@@ -17,6 +17,7 @@ import sdGun from './entities/sdGun.js';
 import sdEffect from './entities/sdEffect.js';
 import sdCom from './entities/sdCom.js';
 import sdBullet from './entities/sdBullet.js';
+import sdAsteroid from './entities/sdAsteroid.js';
 import sdWeather from './entities/sdWeather.js';
 import sdBlock from './entities/sdBlock.js';
 import sdDoor from './entities/sdDoor.js';
@@ -81,7 +82,6 @@ class sdWorld
 		sdWorld.server_start_values = {}; // All values are JSON.parse results or strings on parse error, world_slot is one of them as long as it is passed in command line (will be missing if default slot is used, check globalThis.world_slot for relevant value of world slot)
 		sdWorld.server_config = {};
 		
-		sdWorld.time = Date.now(); // Can be important because some entities (sdCommandCentre) use sdWorld.time as default destruction time, which will be instantly without setting this value
 		sdWorld.frame = 0;
 		
 		sdWorld.paused = false; // Single-player only, prevents some global logic like sdDeepSleep spawns
@@ -97,6 +97,11 @@ class sdWorld
 		sdWorld.is_server = ( typeof window === 'undefined' );
 		sdWorld.is_singleplayer = false; // Local offline mode has it as true
 		sdWorld.mobile = false;
+		
+		sdWorld.time = Date.now(); // Can be important because some entities (sdCommandCentre) use sdWorld.time as default destruction time, which will be instantly without setting this value
+		
+		//if ( !sdWorld.is_server )
+		//EnforceChangeLog( sdWorld, 'time' );
 		
 		sdWorld.soft_camera = true;
 		sdWorld.show_videos = true;
@@ -237,13 +242,31 @@ class sdWorld
 			'restore', 3,
 			'rotate', 4,
 			'scale', 5,
-			'translate', 6
+			'translate', 6,
+			
+			'filter', 7,
+			'apply_shading', 8,
+			'sd_hue_rotation', 9,
+			'sd_color_mult_r', 10,
+			'sd_color_mult_g', 11,
+			'sd_color_mult_b', 12
 		];
+		/*ctx.apply_shading = false;
+		ctx.sd_hue_rotation = 0;
+		ctx.sd_color_mult_r = 1;
+		ctx.sd_color_mult_g = 1;
+		ctx.sd_color_mult_b = 1;*/
 		sdWorld.draw_methods_per_command_id = {};
 		sdWorld.draw_methods_output_ptr = null;
 		sdWorld.draw_operation_no_parameters = {};
 		sdWorld.draw_operation_no_parameters[ 2 ] = true;
 		sdWorld.draw_operation_no_parameters[ 3 ] = true;
+		sdWorld.draw_operation_expects_following_number = {};
+		sdWorld.draw_operation_expects_following_number[ 8 ] = true;
+		sdWorld.draw_operation_expects_following_number[ 9 ] = true;
+		sdWorld.draw_operation_expects_following_number[ 10 ] = true;
+		sdWorld.draw_operation_expects_following_number[ 11 ] = true;
+		sdWorld.draw_operation_expects_following_number[ 12 ] = true;
 		
 		
 	
@@ -744,6 +767,8 @@ class sdWorld
 						'sdDrone.DRONE_CUT_DROID', 0.35
 					];
 			let really_deep_mobs = [ // Really deep
+				
+						'sdSandWorm.KIND_CRYSTAL_HUNTING_WORM', 1.0,
 						'sdCube.KIND_ANCIENT', 0.4,
 						'sdBiter.TYPE_LARGE', 0.4
 
@@ -791,8 +816,10 @@ class sdWorld
 				potential_crystal = 'sdCrystal.crab';
 			}
 			
-			let contains_class = ( !half && Math.random() > 0.85 / hp_mult ) ? 
-									( ( Math.random() < Math.min( 0.725, 0.3 * ( 1*0.75 + hp_mult*0.25 ) ) ) ? random_enemy : potential_crystal ) : 
+			//let contains_class = ( !half && Math.random() > 0.85 / hp_mult ) ? 
+			let contains_class = ( !half && sdWorld.server_config.ShouldBlockContainAnything( x, y, hp_mult ) ) ? 
+									//( ( Math.random() < Math.min( 0.725, 0.3 * ( 0.75 + hp_mult * 0.25 ) ) ) ? random_enemy : potential_crystal ) : 
+									( sdWorld.server_config.ShouldBlockContainMobRatherThanCrystal( x, y, hp_mult ) ? random_enemy : potential_crystal ) : 
 									( 
 										( Math.random() < 0.1 ) ? 'weak_ground' : null 
 									);
@@ -814,7 +841,7 @@ class sdWorld
 			if ( !only_plantless_block )
 			if ( y === from_y )
 			if ( y <= sdWorld.base_ground_level )
-			if ( !icy )
+			//if ( !icy )
 			{
 				if ( plants === null )
 				{
@@ -907,28 +934,19 @@ class sdWorld
 		
 		if ( ent )
 		{
-			if ( icy )
-			{
-				ent.filter = 'saturate(0.3)';
-				ent.br *= 4;
-				ent.hue = 180;
+			sdWorld.server_config.ModifyTerrainEntity( ent, icy );
 
-				if ( ent._plants )
-				for ( let i = 0; i < ent._plants.length; i++ )
+			if ( ent._plants )
+			for ( let i = 0; i < ent._plants.length; i++ )
+			{
+				let e = sdEntity.entities_by_net_id_cache_map.get( ent._plants[ i ] );
+				if ( e )
 				{
-					let e = sdEntity.entities_by_net_id_cache_map.get( ent._plants[ i ] );
-					if ( e )
-					{
-						e.snowed = true;
-						/*
-						e.br *= 4;
-						e.filter = 'saturate(0.3)';
-						e.hue = 180;*/
-					}
+					e.filter = ent.filter;
+					e.hue = ent.hue;
+					e.br = ent.br;
 				}
 			}
-
-			sdWorld.server_config.ModifyTerrainEntity( ent );
 		}
 
 		if ( ent )
@@ -1473,7 +1491,7 @@ class sdWorld
 			params.attachment = [ params.attachment.GetClass(), params.attachment._net_id ];
 		}
 		
-		if ( params.type === sdEffect.TYPE_EXPLOSION )
+		if ( params.type === sdEffect.TYPE_EXPLOSION || params.type === sdEffect.TYPE_EXPLOSION_NON_ADDITIVE )
 		{
 			/*let targets = sdWorld.GetAnythingNear( params.x, params.y, params.radius );
 			
@@ -1909,7 +1927,12 @@ class sdWorld
 		
 		for ( x = min_x; x < max_x; x++ )
 		for ( y = min_y; y < max_y; y++ )
-		ret.push( sdWorld.RequireHashPosition( x * CHUNK_SIZE, y * CHUNK_SIZE ) );
+		{
+			ret.push( sdWorld.RequireHashPosition( x * CHUNK_SIZE, y * CHUNK_SIZE ) );
+			
+			//if ( ret.length > 10000 )
+			//throw new Error( 'Timescale crash?' );
+		}
 		
 		return ret;
 	}
@@ -2026,15 +2049,8 @@ class sdWorld
 				c = 'Flesh corruption';
 			}
 
-			if ( c === 'Crystal' )
+			/*if ( c === 'Crystal' )
 			{
-				/*sdCrystal.TYPE_CRYSTAL = 1;
-				sdCrystal.TYPE_CRYSTAL_BIG = 2;
-				sdCrystal.TYPE_CRYSTAL_CRAB = 3;
-				sdCrystal.TYPE_CRYSTAL_CORRUPTED = 4;
-				sdCrystal.TYPE_CRYSTAL_ARTIFICIAL = 5;
-				sdCrystal.TYPE_CRYSTAL_CRAB_BIG = 6;*/
-									
 				let matter_value = ( ent.is_big ? Math.round( ent.matter_max / 4 ) : ent.matter_max );
 
 				if ( matter_value < 1000 )
@@ -2059,8 +2075,8 @@ class sdWorld
 				c = 'Depleted ' + c;
 				else
 				if ( ent.is_overcharged )
-				c = 'Overcharged ' + c;
-			}
+				c = 'Overcharged ' + c;/
+			}*/
 
 			if ( c === 'Area' )
 			{
@@ -2436,7 +2452,8 @@ class sdWorld
 	static UpdateHashPosition( entity, delay_callback_calls, allow_calling_movement_in_range=true ) // allow_calling_movement_in_range better be false when it is not decided whether entity will be physically placed in world or won't be (so sdBlock SHARP won't kill initiator in the middle of Shoot method of a gun, which was causing crash)
 	{
 		if ( sdWorld.is_server )
-		if ( entity.IsGlobalEntity() )
+		//if ( entity.IsGlobalEntity() )
+		if ( entity.is( sdWeather ) )
 		{
 			debugger;
 		}
@@ -2535,15 +2552,55 @@ class sdWorld
 			
 			for ( var i = 0; i < new_affected_hash_arrays.length; i++ )
 			{
+				let arr = new_affected_hash_arrays[ i ].arr;
+				
+				if ( sdDeepSleep.debug_track_entity_stucking_on_hibernated_deep_sleep_areas )
+				if ( sdWorld.is_server )
+				{
+					if ( sdDeepSleep.track_entity_stucking_ignore_temporary )
+					{
+						// Grass spawning when decoding unspawned areas underneath other unspawned areas
+					}
+					else
+					{
+						if ( entity.is( sdAsteroid ) || entity.is( sdBullet ) || entity.is( sdStatusEffect ) || entity.is( sdGib ) || entity.is( sdGun ) )
+						{
+							// Ignore these
+						}
+						else
+						if ( entity.is( sdDeepSleep ) && ( entity.type === sdDeepSleep.TYPE_SCHEDULED_SLEEP || entity.type === sdDeepSleep.TYPE_DO_NOT_HIBERNATE ) )
+						{
+							// These are fine to overlap
+						}
+						else
+						for ( let i2 = 0; i2 < arr.length; i2++ )
+						{
+							let e = arr[ i2 ];
+
+							if ( e.is( sdDeepSleep ) )
+							if ( !e._is_being_removed )
+							{
+								if ( e.type === sdDeepSleep.TYPE_UNSPAWNED_WORLD || e.type === sdDeepSleep.TYPE_HIBERNATED_WORLD )
+								{
+									if ( e.DoesOverlapWith( entity, -1 ) )
+									{
+										console.warn( 'Entity',entity,'ended up being stuck in sdDeepSleep object',e );
+										debugger;
+									}
+								}
+							}
+						}
+					}
+				}
+				
 				//if ( new_affected_hash_arrays[ i ].unlinked )
 				//throw new Error('Adding to unlinked hash');
 				
 				//new_affected_hash_arrays[ i ].push( entity );
-				new_affected_hash_arrays[ i ].arr.push( entity );
+				arr.push( entity );
 				//new_affected_hash_arrays[ i ].RecreateWith( entity );
 				
-				if ( new_affected_hash_arrays[ i ].length > 1000 ) // Dealing with NaN bounds?
-				//if ( new_affected_hash_arrays[ i ].arr.length > 100 ) // Dealing with NaN bounds? Or just entity flood? Likely entity flood (is is bad for performance)
+				if ( arr.length > 1000 ) // Dealing with NaN bounds?
 				debugger;
 			}
 			
@@ -2792,7 +2849,7 @@ class sdWorld
 			}
 
 			for ( i = 0; i < sdPresetEditor.regions.length; i++ )
-			if ( sdPresetEditor.regions[ i ].time_scale !== 1 )
+			if ( sdPresetEditor.regions[ i ].time_scale !== 1000 )
 			{
 				if ( stop_motion_regions === null )
 				stop_motion_regions = [];
@@ -2852,7 +2909,7 @@ class sdWorld
 			if ( sdWorld.my_entity )
 			if ( !sdWorld.is_singleplayer )
 			{
-				let gs = ( timewarps ? ( GetTimeWarpSpeedForEntity( sdWorld.my_entity ) ) : 1 ) * GSPEED;
+				let gs = Math.round( ( timewarps ? ( GetTimeWarpSpeedForEntity( sdWorld.my_entity ) ) : 1 ) * GSPEED * 1000 ) / 1000;
 				
 				const max_merging_gspeed = 0; // Less data but less accurate too
 				
@@ -3527,7 +3584,6 @@ class sdWorld
 	static CheckLineOfSight( x1, y1, x2, y2, ignore_entity=null, ignore_entity_classes=null, include_only_specific_classes=null, custom_filtering_method=null ) // sdWorld.last_hit_entity will be set if false, but not if world edge was met
 	{
 		var di = sdWorld.Dist2D( x1,y1,x2,y2 );
-		//var step = 16;
 		var step = 8;
 		
 		for ( var s = step / 2; s < di - step / 2; s += step )
@@ -3539,10 +3595,24 @@ class sdWorld
 		}
 		return true;
 	}
+	static CheckLineOfSight2( x1, y1, x2, y2, ignore_entity=null, ignore_entity2=null, ignore_entity_classes=null, include_only_specific_classes=null, custom_filtering_method=null ) // sdWorld.last_hit_entity will be set if false, but not if world edge was met
+	{
+		var di = sdWorld.Dist2D( x1,y1,x2,y2 );
+		var step = 8;
+		
+		for ( var s = step / 2; s < di - step / 2; s += step )
+		{
+			var x = x1 + ( x2 - x1 ) / di * s;
+			var y = y1 + ( y2 - y1 ) / di * s;
+			if ( sdWorld.CheckWallExists( x, y, ignore_entity, ignore_entity_classes, include_only_specific_classes, custom_filtering_method ) )
+			if ( sdWorld.CheckWallExists( x, y, ignore_entity2, ignore_entity_classes, include_only_specific_classes, custom_filtering_method ) )
+			return false;
+		}
+		return true;
+	}
 	static TraceRayPoint( x1, y1, x2, y2, ignore_entity=null, ignore_entity_classes=null, include_only_specific_classes=null, custom_filtering_method=null )
 	{
 		var di = sdWorld.Dist2D( x1,y1,x2,y2 );
-		//var step = 16;
 		var step = 8;
 		
 		for ( var s = step / 2; s < di - step / 2; s += step )
@@ -3716,11 +3786,11 @@ class sdWorld
 			{
 				return 'brightness(0) drop-shadow(0px 0px '+( glow_radius_scale * 6 )+'px #000000'+glow_opacity_hex+')';
 			}
-			/*else
-			if ( v === 5120 * 8 ) // Task reward / Advanced matter container
+			else
+			if ( v === -1 ) // Task reward / Advanced matter container
 			{
 				return 'brightness(1) saturate(0) drop-shadow(0px 0px '+( glow_radius_scale * 6 )+'px #FFFFFF'+glow_opacity_hex+')';
-			}*/
+			}
 			else
 			if ( v === 5120 * 8 ) // new 2022
 			{
@@ -4022,7 +4092,7 @@ class sdWorld
 		if ( player_description['voice6'] ) // Falkok voice
 		sdWorld.ReplaceColorInSDFilter_v2( ret, '#800000', '#006480', false ); // hue +73 deg
 		
-		if ( player_description['voice7'] ) // Robot voice
+		if ( player_description['voice7'] || player_description['voice13'] ) // Robot voice / Sword bot
 		sdWorld.ReplaceColorInSDFilter_v2( ret, '#800000', '#000000', false ); // hue +73 deg
 		
 		if ( player_description['voice8'] ) // Council voice
@@ -4223,6 +4293,11 @@ class sdWorld
 			_voice.pitch = 60;
 			_voice.speed = 120;
 		}
+		if ( player_description['voice13'] )
+		{
+			_voice.variant = 'swordbot';
+			_voice.pitch = 0;
+		}
 		
 		return _voice;
 	}
@@ -4231,18 +4306,20 @@ class sdWorld
 	{
 		if ( character_entity.skin_allowed )
 		{
-		character_entity.sd_filter = sdWorld.ConvertPlayerDescriptionToSDFilter_v2( player_settings );
-		character_entity._voice = sdWorld.ConvertPlayerDescriptionToVoice( player_settings );
+			character_entity.sd_filter = sdWorld.ConvertPlayerDescriptionToSDFilter_v2( player_settings );
+			character_entity._voice = sdWorld.ConvertPlayerDescriptionToVoice( player_settings );
 
-		character_entity.helmet = sdWorld.ConvertPlayerDescriptionToHelmet( player_settings );
-		character_entity.body = sdWorld.ConvertPlayerDescriptionToBody( player_settings );
-		character_entity.legs = sdWorld.ConvertPlayerDescriptionToLegs( player_settings );
+			character_entity.helmet = sdWorld.ConvertPlayerDescriptionToHelmet( player_settings );
+			character_entity.body = sdWorld.ConvertPlayerDescriptionToBody( player_settings );
+			character_entity.legs = sdWorld.ConvertPlayerDescriptionToLegs( player_settings );
 		}
 
 		character_entity.title = player_settings.hero_name;
 		character_entity.title_censored = ( typeof sdModeration !== 'undefined' && socket ) ? sdModeration.IsPhraseBad( character_entity.title, socket ) : false;
 		
 		character_entity._allow_self_talk = ( player_settings.selftalk1 ) || false;
+		
+		character_entity.onSkinChanged();
 	}
 	
 	static RequirePassword( message_and_color )
@@ -4814,7 +4891,8 @@ class sdWorld
 
 		if ( globalThis.preview_interval !== null )
 		{
-			clearInterval( globalThis.preview_interval );
+			//clearInterval( globalThis.preview_interval );
+			cancelAnimationFrame( globalThis.preview_interval );
 			globalThis.preview_interval = null;
 		}
 
@@ -4848,7 +4926,8 @@ class sdWorld
 		
 		if ( globalThis.preview_interval === null )
 		{
-			globalThis.preview_interval = setInterval( globalThis.preview_fnc, 16 );
+			//globalThis.preview_interval = setInterval( globalThis.preview_fnc, 16 );
+			globalThis.preview_interval = requestAnimationFrame( globalThis.preview_fnc );
 		}
 		
 		globalThis.meSpeak.stop();
@@ -4896,6 +4975,18 @@ class sdWorld
 			}
 		}
 		
+		/*if ( ent.GetClass() === 'sdQuickie' )
+		{
+			debugger;
+		}*/
+		
+		let store_filter_operations = true;
+		
+		if ( ent.is( sdCrystal ) )
+		{
+			store_filter_operations = false;
+		}
+		
 		const command_match_table = sdWorld.draw_operation_command_match_table;
 		const methods_per_command_id = sdWorld.draw_methods_per_command_id;
 
@@ -4907,6 +4998,8 @@ class sdWorld
 		
 		let any_drawImage_happened = false;
 		
+		let ctx_filter = 'none';
+		
 		var fake_ctx = new Proxy( 
 			{}, 
 			{
@@ -4914,6 +5007,11 @@ class sdWorld
 				{
 					if ( name === 'drawImage' )
 					name = 'drawImageFilterCache';
+					
+					if ( name === 'filter' )
+					{
+						return ctx_filter;
+					}
 				
 					if ( name === 'drawImageFilterCache' )
 					{
@@ -4921,6 +5019,12 @@ class sdWorld
 					}
 					
 					let command_offset = command_match_table.indexOf( name );
+					
+					/*if ( !store_filter_operations )
+					if ( name === 'filter' )
+					{
+						command_offset = -1;
+					}*/
 					
 					if ( command_offset !== -1 )
 					{
@@ -4984,13 +5088,65 @@ class sdWorld
 				},
 				set: function( target, prop, value ) 
 				{
-					if ( prop === 'sd_filter' )
+					/*if ( prop === 'sd_filter' )
 					sdWorld.draw_methods_output_ptr.push( 0, value );
-					//sdWorld.draw_methods_output_ptr.push( 0, [ value ] );
-					
+					else
+					if ( prop === 'filter' && store_filter_operations )
+					{
+						if ( typeof value !== 'string' )
+						throw new Error();
+						
+						sdWorld.draw_methods_output_ptr.push( 7, value );
+					}
+					else*/
 					if ( prop === '' )
 					{
 						blend_mode = value;
+					}
+					else
+					{
+						let id = sdWorld.draw_operation_command_match_table.indexOf( prop );
+						
+						if ( prop === 'filter' )
+						{
+							if ( value === null || value === '' )
+							return true; // It actually does nothing if filter is set to null or empty string, just skip this action
+							
+							ctx_filter = value;
+							
+							if ( !store_filter_operations )
+							id = -1;
+						}
+						
+						if ( id !== -1 )
+						{
+							let opcode = sdWorld.draw_operation_command_match_table[ id + 1 ];
+							
+							if ( typeof value === 'boolean' )
+							value = value ? 1 : 0;
+							else
+							if ( typeof value === 'number' )
+							{
+							}
+							else
+							if ( typeof value === 'object' )
+							{
+								// sd_filter
+							}
+							else
+							if ( typeof value === 'string' && value.length < 256 )
+							{
+							}
+							else
+							{
+								console.warn( 'Strange value set for opcode: ', opcode, value );
+								//throw new Error();
+								debugger;
+								return true;
+							}
+
+							sdWorld.draw_methods_output_ptr.push( opcode, value );
+						}
 					}
 					
 					return true;
@@ -5054,29 +5210,98 @@ class sdWorld
 							
 		*/
 	   
+		let filter0 = ctx ? ctx.filter : null;
+		let filter1 = null;
+		
+		let r0 = ctx ? ctx.sd_color_mult_r : 1;
+		let g0 = ctx ? ctx.sd_color_mult_g : 1;
+		let b0 = ctx ? ctx.sd_color_mult_b : 1;
+		
+		let r1 = 1;
+		let g1 = 1;
+		let b1 = 1;
+	   
 		let opcode = -1;
 		
 		for ( let i = 0; i < output.length; i++ )
 		{
 			if ( typeof output[ i ] === 'number' )
-			opcode = output[ i ];
+			{
+				opcode = output[ i ];
+				
+				if ( sdWorld.draw_operation_expects_following_number[ opcode ] )
+				{
+					i++;
+				}
+			}
 			
-			if ( typeof output[ i ] !== 'number' || sdWorld.draw_operation_no_parameters[ opcode ] )
+			if ( typeof output[ i ] !== 'number' || sdWorld.draw_operation_no_parameters[ opcode ] || sdWorld.draw_operation_expects_following_number[ opcode ] )
 			{
 				if ( !ctx )
 				{
-					if ( opcode === 0 ) // sd_filter set
+					// Decoding preparations, if needed
+					if ( opcode === 0 ) // sd_filter
 					{
 						if ( output[ i ] )
 						if ( !output[ i ].s )
 						output[ i ] = sdWorld.GetVersion2SDFilterFromVersion1SDFilter( output[ i ] );
 					}
+					else
+					if ( opcode === 8 ) // apply_shading
+					{
+						output[ i ] = ( output[ i ] === 1 );
+						//i++; // Skip number after opcode
+					}
 				}
 				else
 				{
-					if ( opcode === 0 ) // sd_filter set
+					if ( opcode === 0 || opcode === 8 || opcode === 9 ) // sd_filter || apply_shading || sd_hue_rotation
 					{
-						ctx.sd_filter = output[ i ];
+						let id = sdWorld.draw_operation_command_match_table.indexOf( opcode );
+						
+						if ( id === -1 )
+						throw new Error();
+						else
+						ctx[ sdWorld.draw_operation_command_match_table[ id - 1 ] ] = output[ i ];
+						
+						//ctx.sd_filter = output[ i ];
+						//i++; // Skip number after opcode
+					}
+					else
+					if ( opcode === 7 ) // filter
+					{
+						filter1 = output[ i ];
+						
+						if ( filter1 === 'none' )
+						ctx.filter = filter0;
+						else
+						{
+							if ( filter0 === 'none' )
+							ctx.filter = filter1;
+							else
+							ctx.filter = filter1 + ' ' + filter0;
+						}
+					}
+					else
+					if ( opcode === 10 ) // r
+					{
+						r1 = output[ i ];
+						ctx.sd_color_mult_r = r0 * r1;
+						//i++; // Skip number after opcode
+					}
+					else
+					if ( opcode === 11 ) // g
+					{
+						g1 = output[ i ];
+						ctx.sd_color_mult_g = g0 * g1;
+						//i++; // Skip number after opcode
+					}
+					else
+					if ( opcode === 12 ) // b
+					{
+						b1 = output[ i ];
+						ctx.sd_color_mult_b = b0 * b1;
+						//i++; // Skip number after opcode
 					}
 					else
 					{
@@ -5113,6 +5338,12 @@ class sdWorld
 						else
 						ctx[ method_name ]( ...args );
 					}
+				}
+				
+				if ( sdWorld.draw_operation_expects_following_number[ opcode ] )
+				{
+					// Reset opcode state once we received number
+					opcode = -1;
 				}
 			}
 		}

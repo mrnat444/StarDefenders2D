@@ -67,15 +67,20 @@ class sdBiter extends sdEntity
 		
 		this.death_anim = 0;
 		
-		this._current_target = null;
+		this._current_target = params.target || null;
 		
 		//this._last_stand_on = null;
 		this._last_jump = sdWorld.time;
 		this._last_attack = sdWorld.time + ( this.type === sdBiter.TYPE_LARGE ? 400 : 2000 );
+		this._last_bite = sdWorld.time;
 		this._attacking = false;
 		this.side = 1;
 		
 		this.attack_anim = 0;
+		
+		this._unlimited_range = params.unlimited_range || false;
+		
+		this._hibernation_check_timer = 30;
 		
 		//this._anim_shift = ~~( Math.random() * 10000 );
 		
@@ -94,7 +99,7 @@ class sdBiter extends sdEntity
 		if ( character.hea > 0 )
 		{
 			let di = sdWorld.Dist2D( this.x, this.y, character.x, character.y ); 
-			if ( di < sdBiter.max_seek_range )
+			if ( di < sdBiter.max_seek_range || this._unlimited_range )
 			if ( this._current_target === null || 
 				 ( this._current_target.hea || this._current_target._hea ) <= 0 || 
 				 di < sdWorld.Dist2D(this._current_target.x,this._current_target.y,this.x,this.y) )
@@ -115,6 +120,11 @@ class sdBiter extends sdEntity
 	{
 		return 'hue-rotate('+( this.hue + 150 )+'deg)';
 	}
+	CanBuryIntoBlocks()
+	{
+		return 1; // 0 = no blocks, 1 = natural blocks, 2 = corruption, 3 = flesh blocks	
+	}
+	
 	Damage( dmg, initiator=null )
 	{
 		if ( !sdWorld.is_server )
@@ -193,7 +203,7 @@ class sdBiter extends sdEntity
 		else
 		if ( this._current_target )
 		{
-			if ( this._current_target._is_being_removed || !this._current_target.IsVisible( this ) || sdWorld.Dist2D( this.x, this.y, this._current_target.x, this._current_target.y ) > sdBiter.max_seek_range + 32 )
+			if ( this._current_target._is_being_removed || !this._current_target.IsVisible( this ) || ( sdWorld.Dist2D( this.x, this.y, this._current_target.x, this._current_target.y ) > sdBiter.max_seek_range + 32 && !this._unlimited_range ) )
 			this._current_target = null;
 			else
 			{
@@ -337,6 +347,8 @@ class sdBiter extends sdEntity
 						from_entity.DamageWithEffect( dmg, this );
 						from_entity.PlayDamageEffect( xx, yy );
 						
+						this._last_bite = sdWorld.time;
+						
 						if ( from_entity.is( sdCharacter ) )
 						{
 							let sickness = this.type === sdBiter.TYPE_LARGE ? 300 : 30;
@@ -365,15 +377,36 @@ class sdBiter extends sdEntity
 			this.sy += sdWorld.gravity * GSPEED;
 		}
 		
+		if ( sdWorld.is_server )
+		{
+			if ( this._last_bite < sdWorld.time - ( 1000 * 60 * 3 ) ) // 3 minutes since last attack?
+			{
+				this._hibernation_check_timer -= GSPEED;
+				
+				if ( this._hibernation_check_timer < 0 )
+				{
+					this._hibernation_check_timer = 30 * 30; // Check if hibernation is possible every 30 seconds
+					
+					if ( this.type === sdBiter.TYPE_SMALL )
++					this.AttemptBlockBurying(); // Attempt to hibernate inside nearby blocks
+					if ( this.type === sdBiter.TYPE_LARGE ) // Large/infectious biter?
++					this.AttemptBlockBurying( 'sdBiter.TYPE_LARGE' ); // Attempt to hibernate inside nearby blocks
+				}
+			}
+		}
+		
 		
 		this.ApplyVelocityAndCollisions( GSPEED, 0, true );
+	}
+	get title()
+	{
+		return this.type === sdBiter.TYPE_LARGE ? "Infectious biter" : "Biter";
 	}
 	DrawHUD( ctx, attached ) // foreground layer
 	{
 		if ( this.death_anim === 0 )
 		{
-			let tooltip = this.type === sdBiter.TYPE_LARGE ? "Infectious biter" : "Biter";
-			sdEntity.Tooltip( ctx, tooltip );
+			sdEntity.Tooltip( ctx, this.title );
 		}
 	}
 	Draw( ctx, attached )

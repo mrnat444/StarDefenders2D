@@ -193,6 +193,9 @@ class sdGunClass
 		let ID_PROJECTILE_COLOR = 16;
 		let ID_DAMAGE_VALUE = 17; // For non custom-guns so it can display damage properly.
 		let ID_ALT_DAMAGE_VALUE = 18;
+		let ID_HAS_EXALTED_CORE = 19; // Exalted core, final weapon damage multiplier by 25%
+		let ID_HAS_CUBE_FUSION_CORE = 20; // Cube fusion core, final weapon matter cost reduction by 25%
+		
 		function UpdateCusomizableGunProperties( gun )
 		{
 			gun._count = gun.extra[ ID_HAS_SHOTGUN_EFFECT ] ? 5 : 1;
@@ -366,7 +369,7 @@ class sdGunClass
 			AddRecolorsFromColorAndCost( custom_rifle_upgrades, '#404040', 0, 'dark', 'customize_colors' );
 			AddRecolorsFromColorAndCost( custom_rifle_upgrades, '#808080', 0, 'bright', 'customize_colors' );
 			AddRecolorsFromColorAndCost( custom_rifle_upgrades, '#6ca2d0', 0, 'energy', 'customize_colors' );
-			AddRecolorsFromColorAndCost( custom_rifle_upgrades, '#ff0000', 0, 'laset', 'customize_colors' );
+			AddRecolorsFromColorAndCost( custom_rifle_upgrades, '#ff0000', 0, 'laser', 'customize_colors' );
 			AddRecolorsFromColorAndCost( custom_rifle_upgrades, '#9d822f', 0, 'magazine', 'customize_colors' );
 			
 			custom_rifle_upgrades.push(
@@ -750,6 +753,10 @@ class sdGunClass
 				if ( gun.extra[ ID_PROJECTILE_COLOR ] ) // Custom projectile colors?
 				obj.color = gun.extra[ ID_PROJECTILE_COLOR ];
 				
+				// if ( gun.extra[ ID_HAS_EXALTED_CORE ] ) // Has exalted core been infused?
+				// obj._damage *= 1.25; // Increase damage further by 25%
+				// Done inside sdGun now.
+				
 				//obj.color = gun.extra[ ID_PROJECTILE_COLOR ];
 				
 				return obj;
@@ -794,7 +801,9 @@ class sdGunClass
 				
 				if ( gun.extra[ ID_PROJECTILE_COLOR ] )
 				obj.color = gun.extra[ ID_PROJECTILE_COLOR ];
-				
+			
+				// if ( gun.extra[ ID_HAS_EXALTED_CORE ] ) // Has exalted core been infused?
+				// obj._damage *= 1.25; // Increase damage further by 25%
 				
 				return obj;
 			},
@@ -844,6 +853,9 @@ class sdGunClass
 				
 				if ( gun.extra[ ID_PROJECTILE_COLOR ] )
 				obj.color = gun.extra[ ID_PROJECTILE_COLOR ];
+			
+				// if ( gun.extra[ ID_HAS_EXALTED_CORE ] ) // Has exalted core been infused?
+				// obj._damage *= 1.25; // Increase damage further by 25%
 				
 				//obj.color = gun.extra[ ID_PROJECTILE_COLOR ];
 				
@@ -889,6 +901,9 @@ class sdGunClass
 				
 				if ( gun.extra[ ID_PROJECTILE_COLOR ] )
 				obj.color = gun.extra[ ID_PROJECTILE_COLOR ];
+			
+				// if ( gun.extra[ ID_HAS_EXALTED_CORE ] ) // Has exalted core been infused?
+				// obj._damage *= 1.25; // Increase damage further by 25%
 				
 				//obj.color = gun.extra[ ID_PROJECTILE_COLOR ];
 				
@@ -952,6 +967,7 @@ class sdGunClass
 					//UpdateCusomizableGunProperties( gun );
 					if ( gun.extra[ ID_PROJECTILE_COLOR ] )
 					obj.color = gun.extra[ ID_PROJECTILE_COLOR ];
+				
 				}
 			},
 			upgrades: AddGunDefaultUpgrades( AddRecolorsFromColorAndCost( [], '#808000', 20 ) )
@@ -1192,6 +1208,9 @@ class sdGunClass
 				if ( gun.extra[ ID_PROJECTILE_COLOR ] )
 				obj.color = gun.extra[ ID_PROJECTILE_COLOR ];
 				
+				// if ( gun.extra[ ID_HAS_EXALTED_CORE ] ) // Has exalted core been infused?
+				// obj._damage *= 1.25; // Increase damage further by 25%
+				
 				//obj.color = gun.extra[ ID_PROJECTILE_COLOR ];
 				
 				return obj;
@@ -1271,6 +1290,7 @@ class sdGunClass
 			count: 1,
 			matter_cost: 250,
 			projectile_velocity: 16,
+			has_description: [ 'Increases melee attack and reload speed', 'Duration: 20 seconds' ],
 			GetAmmoCost: ()=>
 			{
 				return 100;
@@ -1313,6 +1333,9 @@ class sdGunClass
 				
 				if ( gun.extra[ ID_PROJECTILE_COLOR ] )
 				obj.color = gun.extra[ ID_PROJECTILE_COLOR ];
+			
+				// if ( gun.extra[ ID_HAS_EXALTED_CORE ] ) // Has exalted core been infused?
+				// obj._damage *= 1.25; // Increase damage further by 25%
 				
 				//obj.color = gun.extra[ ID_PROJECTILE_COLOR ];
 				
@@ -1356,6 +1379,9 @@ class sdGunClass
 				
 				if ( gun.extra[ ID_PROJECTILE_COLOR ] )
 				obj.color = gun.extra[ ID_PROJECTILE_COLOR ];
+			
+				// if ( gun.extra[ ID_HAS_EXALTED_CORE ] ) // Has exalted core been infused?
+				// obj._damage *= 1.25; // Increase damage further by 25%
 				
 				//obj.color = gun.extra[ ID_PROJECTILE_COLOR ];
 				
@@ -1519,6 +1545,9 @@ class sdGunClass
 				obj._knock_scale *= gun.extra[ ID_RECOIL_SCALE ];
 				if ( gun.extra[ ID_PROJECTILE_COLOR ] )
 				obj.color = gun.extra[ ID_PROJECTILE_COLOR ];
+			
+				// if ( gun.extra[ ID_HAS_EXALTED_CORE ] ) // Has exalted core been infused?
+				// obj._damage *= 1.25; // Increase damage further by 25%
 				
 				//obj.color = gun.extra[ ID_PROJECTILE_COLOR ];
 				
@@ -1559,7 +1588,7 @@ class sdGunClass
 			image2: [ sdWorld.CreateImageFromFile( 'raygun_c01y2' ), sdWorld.CreateImageFromFile( 'raygun_c01y2b' ) ],
 			has_images: true,
 			sound: 'gun_raygun',
-			title: 'Raygun C01y',
+			title: 'Ray Gun C-01y',
 			slot: 3,
 			reload_time: 60, // Might be inaccurate - not checked
 			muzzle_x: 9,
@@ -1582,6 +1611,9 @@ class sdGunClass
 				
 				if ( gun.extra[ ID_PROJECTILE_COLOR ] )
 				obj.color = gun.extra[ ID_PROJECTILE_COLOR ];
+			
+				// if ( gun.extra[ ID_HAS_EXALTED_CORE ] ) // Has exalted core been infused?
+				// obj._damage *= 1.25; // Increase damage further by 25%
 				
 				//obj.color = gun.extra[ ID_PROJECTILE_COLOR ];
 				
@@ -1625,6 +1657,9 @@ class sdGunClass
 				obj._damage = gun.extra[ ID_DAMAGE_VALUE ]; // Damage value is set onMade
 				obj._damage *= gun.extra[ ID_DAMAGE_MULT ];
 				obj._knock_scale *= gun.extra[ ID_RECOIL_SCALE ];
+				
+				// if ( gun.extra[ ID_HAS_EXALTED_CORE ] ) // Has exalted core been infused?
+				// obj._damage *= 1.25; // Increase damage further by 25%
 				
 				//obj.color = gun.extra[ ID_PROJECTILE_COLOR ];
 				
@@ -1674,6 +1709,9 @@ class sdGunClass
 				//Rails... not sure if they should have shotgun dirt multiplier since they're rails? - Booraz149
 				if ( gun.extra[ ID_PROJECTILE_COLOR ] )
 				obj.color = gun.extra[ ID_PROJECTILE_COLOR ];
+			
+				// if ( gun.extra[ ID_HAS_EXALTED_CORE ] ) // Has exalted core been infused?
+				// obj._damage *= 1.25; // Increase damage further by 25%
 				
 				//obj.color = gun.extra[ ID_PROJECTILE_COLOR ];
 				
@@ -1698,7 +1736,7 @@ class sdGunClass
 						title: 'Upgrade to v2',
 						cost: 300,
 						action: ( gun, initiator=null )=>{ gun.class = sdGun.CLASS_RAIL_SHOTGUN2;
-										gun.extra[ ID_DAMAGE_VALUE ] = 15 * 1.2;
+										gun.extra[ ID_DAMAGE_VALUE ] = 20 * 1.2;
 										gun._max_dps = ( 30 / gun._reload_time ) * gun.extra[ 17 ] * gun._count;
 										}
 					}
@@ -1727,6 +1765,9 @@ class sdGunClass
 				
 				if ( gun.extra[ ID_PROJECTILE_COLOR ] )
 				obj.color = gun.extra[ ID_PROJECTILE_COLOR ];
+			
+				// if ( gun.extra[ ID_HAS_EXALTED_CORE ] ) // Has exalted core been infused?
+				// obj._damage *= 1.25; // Increase damage further by 25%
 				
 				//obj.color = gun.extra[ ID_PROJECTILE_COLOR ];
 				
@@ -1763,6 +1804,7 @@ class sdGunClass
 			spawnable: false,
 			ignore_slot: true,
 			apply_shading: false,
+			has_description: [ 'Increases max matter capacity on pickup' ],
 			onPickupAttempt: ( character, gun )=> // Cancels pickup and removes itself if player can pickup
 			{ 
 				// 20 more levels, 20 * 45 more matter, 4 * 45 matter per shard
@@ -1815,6 +1857,9 @@ class sdGunClass
 				
 				if ( gun.extra[ ID_PROJECTILE_COLOR ] )
 				obj.color = gun.extra[ ID_PROJECTILE_COLOR ];
+			
+				// if ( gun.extra[ ID_HAS_EXALTED_CORE ] ) // Has exalted core been infused?
+				// obj._damage *= 1.25; // Increase damage further by 25%
 				
 				//obj.color = gun.extra[ ID_PROJECTILE_COLOR ];
 				
@@ -1862,6 +1907,9 @@ class sdGunClass
 				
 				if ( gun.extra[ ID_PROJECTILE_COLOR ] )
 				obj.color = gun.extra[ ID_PROJECTILE_COLOR ];
+			
+				// if ( gun.extra[ ID_HAS_EXALTED_CORE ] ) // Has exalted core been infused?
+				// obj._damage *= 1.25; // Increase damage further by 25%
 				
 				//obj.color = gun.extra[ ID_PROJECTILE_COLOR ];
 				
@@ -1898,6 +1946,7 @@ class sdGunClass
 			projectile_properties: { _damage: 0 },
 			spawnable: false,
 			ignore_slot: true,
+			has_description: [ 'Increases score on pickup' ],
 			onPickupAttempt: ( character, gun )=> // Cancels pickup and removes itself if player can pickup
 			{ 
 				if ( !character._ai )
@@ -2018,6 +2067,7 @@ class sdGunClass
 			ignore_slot: true,
 			matter_cost: 150,
 			min_workbench_level: 1,
+			has_description: [ 'Armor: 130', 'Damage absorption: 30%', 'Movement speed reduction: 0%' ],
 			onPickupAttempt: ( character, gun )=> // Cancels pickup and removes itself if player can pickup as armor
 			{ 
 				if ( character.ApplyArmor({ armor: 130, _armor_absorb_perc: 0.3, armor_speed_reduction: 0 }) )
@@ -2051,6 +2101,7 @@ class sdGunClass
 			ignore_slot: true,
 			matter_cost: 250,
 			min_workbench_level: 1,
+			has_description: [ 'Armor: 190', 'Damage absorption: 40%', 'Movement speed reduction: 5%' ],
 			onPickupAttempt: ( character, gun )=> // Cancels pickup and removes itself if player can pickup as matter
 			{ 
 				if ( character.ApplyArmor({ armor: 190, _armor_absorb_perc: 0.4, armor_speed_reduction: 5 }) )
@@ -2084,6 +2135,7 @@ class sdGunClass
 			ignore_slot: true,
 			matter_cost: 350,
 			min_workbench_level: 1,
+			has_description: [ 'Armor: 250', 'Damage absorption: 50%', 'Movement speed reduction: 10%' ],
 			onPickupAttempt: ( character, gun )=> // Cancels pickup and removes itself if player can pickup as matter
 			{ 
 				if ( character.ApplyArmor({ armor: 250, _armor_absorb_perc: 0.5, armor_speed_reduction: 10 }) )
@@ -2135,6 +2187,9 @@ class sdGunClass
 				
 				if ( gun.extra[ ID_PROJECTILE_COLOR ] )
 				obj.color = gun.extra[ ID_PROJECTILE_COLOR ];
+			
+				// if ( gun.extra[ ID_HAS_EXALTED_CORE ] ) // Has exalted core been infused?
+				// obj._damage *= 1.25; // Increase damage further by 25%
 				
 				//obj.color = gun.extra[ ID_PROJECTILE_COLOR ];
 				
@@ -2234,6 +2289,9 @@ class sdGunClass
 				
 				if ( gun.extra[ ID_PROJECTILE_COLOR ] )
 				obj.color = gun.extra[ ID_PROJECTILE_COLOR ];
+			
+				// if ( gun.extra[ ID_HAS_EXALTED_CORE ] ) // Has exalted core been infused?
+				// obj._damage *= 1.25; // Increase damage further by 25%
 
 				//obj.color = gun.extra[ ID_PROJECTILE_COLOR ];
 				
@@ -2282,6 +2340,9 @@ class sdGunClass
 				
 				if ( gun.extra[ ID_PROJECTILE_COLOR ] )
 				obj.color = gun.extra[ ID_PROJECTILE_COLOR ];
+			
+				// if ( gun.extra[ ID_HAS_EXALTED_CORE ] ) // Has exalted core been infused?
+				// obj._damage *= 1.25; // Increase damage further by 25%
 				
 				//obj.color = gun.extra[ ID_PROJECTILE_COLOR ];
 				
@@ -2775,6 +2836,7 @@ class sdGunClass
 			ammo_capacity: -1,
 			count: 1,
 			matter_cost: 300,
+			has_description: [ 'Used to connect base equipment together' ],
 			projectile_velocity: 16,
 			projectile_properties: { time_left: 2, _damage: 1, color: 'transparent', 
 				_custom_target_reaction_protected: cable_reaction_method,
@@ -2861,6 +2923,7 @@ class sdGunClass
 			count: 0,
 			matter_cost: 500, // More DPS relative to stimpack
 			projectile_velocity: 16,
+			has_description: [ 'Slows down time for everything near', 'Duration: 30 seconds' ],
 			GetAmmoCost: ()=>
 			{
 				return 750;
@@ -2895,6 +2958,7 @@ class sdGunClass
 			ignore_slot: true,
 			matter_cost: 275,
 			min_workbench_level: 2,
+			has_description: [ 'Armor: 190', 'Damage absorption: 35%', 'Movement speed reduction: 0%' ],
 			onPickupAttempt: ( character, gun )=> // Cancels pickup and removes itself if player can pickup as matter
 			{ 
 				if ( character.ApplyArmor({ armor: 190, _armor_absorb_perc: 0.35, armor_speed_reduction: 0 }) )
@@ -2928,6 +2992,7 @@ class sdGunClass
 			ignore_slot: true,
 			matter_cost: 375,
 			min_workbench_level: 2,
+			has_description: [ 'Armor: 280', 'Damage absorption: 45%', 'Movement speed reduction: 5%' ],
 			onPickupAttempt: ( character, gun )=> // Cancels pickup and removes itself if player can pickup as matter
 			{ 
 				if ( character.ApplyArmor({ armor: 280, _armor_absorb_perc: 0.45, armor_speed_reduction: 5 }) )
@@ -2961,6 +3026,7 @@ class sdGunClass
 			ignore_slot: true,
 			matter_cost: 475,
 			min_workbench_level: 2,
+			has_description: [ 'Armor: 370', 'Damage absorption: 55%', 'Movement speed reduction: 10%' ],
 			onPickupAttempt: ( character, gun )=> // Cancels pickup and removes itself if player can pickup as matter
 			{ 
 				if ( character.ApplyArmor({ armor: 370, _armor_absorb_perc: 0.55, armor_speed_reduction: 10 }) )
@@ -3005,6 +3071,9 @@ class sdGunClass
 				
 				if ( gun.extra[ ID_PROJECTILE_COLOR ] )
 				obj.color = gun.extra[ ID_PROJECTILE_COLOR ];
+			
+				// if ( gun.extra[ ID_HAS_EXALTED_CORE ] ) // Has exalted core been infused?
+				// obj._damage *= 1.25; // Increase damage further by 25%
 				
 				//obj.color = gun.extra[ ID_PROJECTILE_COLOR ];
 				
@@ -3052,6 +3121,9 @@ class sdGunClass
 				
 				if ( gun.extra[ ID_PROJECTILE_COLOR ] )
 				obj.color = gun.extra[ ID_PROJECTILE_COLOR ];
+			
+				// if ( gun.extra[ ID_HAS_EXALTED_CORE ] ) // Has exalted core been infused?
+				// obj._damage *= 1.25; // Increase damage further by 25%
 				
 				//obj.color = gun.extra[ ID_PROJECTILE_COLOR ];
 				
@@ -3074,7 +3146,7 @@ class sdGunClass
 				title: 'Upgrade to Mark II',
 				cost: 480,
 				action: ( gun, initiator=null )=>{ gun.class = sdGun.CLASS_KVT_MMG_MK2;
-				gun.extra[ ID_DAMAGE_VALUE ] = 42 * 1.14 } // = 48 (value is rounded off)
+				gun.extra[ ID_DAMAGE_VALUE ] = 48; }
 				// gun.sound = 'gun_the_ripper2';
 				// gun.sound_pitch = 0.7; // Upgraded guns don't seem to get all properties of the gun they turn into. Bug? - Ghost581
 				// gun.spread = 0.03; // Spread and rate of fire are also unaffected
@@ -3107,6 +3179,9 @@ class sdGunClass
 				
 				if ( gun.extra[ ID_PROJECTILE_COLOR ] )
 				obj.color = gun.extra[ ID_PROJECTILE_COLOR ];
+			
+				// if ( gun.extra[ ID_HAS_EXALTED_CORE ] ) // Has exalted core been infused?
+				// obj._damage *= 1.25; // Increase damage further by 25%
 				
 				//obj.color = gun.extra[ ID_PROJECTILE_COLOR ];
 				
@@ -3158,6 +3233,9 @@ class sdGunClass
 				
 				if ( gun.extra[ ID_PROJECTILE_COLOR ] )
 				obj.color = gun.extra[ ID_PROJECTILE_COLOR ];
+			
+				// if ( gun.extra[ ID_HAS_EXALTED_CORE ] ) // Has exalted core been infused?
+				// obj._damage *= 1.25; // Increase damage further by 25%
 				
 				//obj.color = gun.extra[ ID_PROJECTILE_COLOR ];
 				
@@ -3264,6 +3342,7 @@ class sdGunClass
 			ignore_slot: true,
 			matter_cost: 125,
 			min_workbench_level: 3,
+			has_description:[ 'Regeneration rate: 2.5 armor/sec' ],
 			onPickupAttempt: ( character, gun )=> // Cancels pickup and removes itself if player can pickup
 			{ 
 				if ( character.ApplyArmorRegen( 250 ) )
@@ -3286,6 +3365,7 @@ class sdGunClass
 			ignore_slot: true,
 			matter_cost: 250,
 			min_workbench_level: 4,
+			has_description:[ 'Regeneration rate: 5 armor/sec' ],
 			onPickupAttempt: ( character, gun )=> // Cancels pickup and removes itself if player can pickup
 			{ 
 				if ( character.ApplyArmorRegen( 500 ) )
@@ -3308,6 +3388,7 @@ class sdGunClass
 			ignore_slot: true,
 			matter_cost: 375,
 			min_workbench_level: 7,
+			has_description:[ 'Regeneration rate: 7.5 armor/sec' ],
 			onPickupAttempt: ( character, gun )=> // Cancels pickup and removes itself if player can pickup
 			{ 
 				if ( character.ApplyArmorRegen( 750 ) )
@@ -3330,6 +3411,7 @@ class sdGunClass
 			ignore_slot: true,
 			matter_cost: 400,
 			min_workbench_level: 6,
+			has_description: [ 'Armor: 300', 'Damage absorption: 40%', 'Movement speed reduction: 0%' ],
 			onPickupAttempt: ( character, gun )=> // Cancels pickup and removes itself if player can pickup as matter
 			{ 
 				if ( character.ApplyArmor({ armor: 300, _armor_absorb_perc: 0.4, armor_speed_reduction: 0 }) )
@@ -3363,6 +3445,7 @@ class sdGunClass
 			ignore_slot: true,
 			matter_cost: 500,
 			min_workbench_level: 6,
+			has_description: [ 'Armor: 400', 'Damage absorption: 50%', 'Movement speed reduction: 5%' ],
 			onPickupAttempt: ( character, gun )=> // Cancels pickup and removes itself if player can pickup as matter
 			{ 
 				if ( character.ApplyArmor({ armor: 400, _armor_absorb_perc: 0.5, armor_speed_reduction: 5 }) )
@@ -3396,6 +3479,7 @@ class sdGunClass
 			ignore_slot: true,
 			matter_cost: 600,
 			min_workbench_level: 6,
+			has_description: [ 'Armor: 500', 'Damage absorption: 60%', 'Movement speed reduction: 10%' ],
 			onPickupAttempt: ( character, gun )=> // Cancels pickup and removes itself if player can pickup as matter
 			{ 
 				if ( character.ApplyArmor({ armor: 500, _armor_absorb_perc: 0.6, armor_speed_reduction: 10 }) )
@@ -3430,6 +3514,7 @@ class sdGunClass
 			matter_cost: 200, // More DPS relative to stimpack
 			projectile_velocity: 16,
 			spawnable: false,
+			has_description: [ 'Summons an Instructor to aid you', 'Duration: 60 seconds' ],
 			GetAmmoCost: ()=>
 			{
 				return 300;
@@ -3666,6 +3751,9 @@ class sdGunClass
 				obj._damage *= gun.extra[ ID_DAMAGE_MULT ];
 				obj._knock_scale *= gun.extra[ ID_RECOIL_SCALE ];
 				
+				// if ( gun.extra[ ID_HAS_EXALTED_CORE ] ) // Has exalted core been infused?
+				// obj._damage *= 1.25; // Increase damage further by 25%
+				
 				//obj.color = gun.extra[ ID_PROJECTILE_COLOR ];
 				
 				return obj;
@@ -3707,7 +3795,7 @@ class sdGunClass
 			
 				if ( gun._held_by._auto_shoot_in > 0 )
 				return 0;
-				
+			
 				return 4;
 			},
 			onShootAttempt: ( gun, shoot_from_scenario )=>
@@ -3732,11 +3820,13 @@ class sdGunClass
 					//sdSound.PlaySound({ name: 'gun_pistol', x:gun.x, y:gun.y });
 					sdSound.PlaySound({ name:'enemy_mech_attack4', x:gun.x, y:gun.y, volume:1.5, pitch: 1 });
 					
-					if ( gun._held_by.matter >= 4 )
+					let matter_cost = gun.GetBulletCost();
+					
+					if ( gun._held_by.matter >= matter_cost )
 					if ( gun._held_by._key_states.GetKey( 'Mouse1' ) )
 					{
 						gun._held_by._auto_shoot_in = ( 2 / ( 1 + gun._combo / 90 ) ); // Faster rate of fire when shooting more
-						gun._held_by.matter -= 4;
+						gun._held_by.matter -= matter_cost;
 						gun._combo_timer = 30;
 						if ( gun._combo < 60 )
 						gun._combo += 2; // Speed up rate of fire, the longer it shoots
@@ -3755,6 +3845,9 @@ class sdGunClass
 				
 				if ( gun.extra[ ID_PROJECTILE_COLOR ] )
 				obj.color = gun.extra[ ID_PROJECTILE_COLOR ];
+			
+				// if ( gun.extra[ ID_HAS_EXALTED_CORE ] ) // Has exalted core been infused?
+				// obj._damage *= 1.25; // Increase damage further by 25%
 				
 				//obj.color = gun.extra[ ID_PROJECTILE_COLOR ];
 				
@@ -3806,6 +3899,9 @@ class sdGunClass
 				
 				if ( gun.extra[ ID_PROJECTILE_COLOR ] )
 				obj.color = gun.extra[ ID_PROJECTILE_COLOR ];
+			
+				// if ( gun.extra[ ID_HAS_EXALTED_CORE ] ) // Has exalted core been infused?
+				// obj._damage *= 1.25; // Increase damage further by 25%
 				
 				//obj.color = gun.extra[ ID_PROJECTILE_COLOR ];
 				
@@ -3854,6 +3950,9 @@ class sdGunClass
 				
 				if ( gun.extra[ ID_PROJECTILE_COLOR ] )
 				obj.color = gun.extra[ ID_PROJECTILE_COLOR ];
+			
+				// if ( gun.extra[ ID_HAS_EXALTED_CORE ] ) // Has exalted core been infused?
+				// obj._damage *= 1.25; // Increase damage further by 25%
 				
 				//obj.color = gun.extra[ ID_PROJECTILE_COLOR ];
 				
@@ -3904,6 +4003,9 @@ class sdGunClass
 				
 				if ( gun.extra[ ID_PROJECTILE_COLOR ] )
 				obj.color = gun.extra[ ID_PROJECTILE_COLOR ];
+			
+				// if ( gun.extra[ ID_HAS_EXALTED_CORE ] ) // Has exalted core been infused?
+				// obj._damage *= 1.25; // Increase damage further by 25%
 				
 				//obj.color = gun.extra[ ID_PROJECTILE_COLOR ];
 				
@@ -3984,6 +4086,9 @@ class sdGunClass
 				
 				if ( gun.extra[ ID_PROJECTILE_COLOR ] )
 				obj.color = gun.extra[ ID_PROJECTILE_COLOR ];
+			
+				// if ( gun.extra[ ID_HAS_EXALTED_CORE ] ) // Has exalted core been infused?
+				// obj._damage *= 1.25; // Increase damage further by 25%
 				
 				//obj.color = gun.extra[ ID_PROJECTILE_COLOR ];
 				
@@ -4034,6 +4139,9 @@ class sdGunClass
 				
 				if ( gun.extra[ ID_PROJECTILE_COLOR ] )
 				obj.color = gun.extra[ ID_PROJECTILE_COLOR ];
+			
+				// if ( gun.extra[ ID_HAS_EXALTED_CORE ] ) // Has exalted core been infused?
+				// obj._damage *= 1.25; // Increase damage further by 25%
 				
 				//obj.color = gun.extra[ ID_PROJECTILE_COLOR ];
 				
@@ -4120,7 +4228,7 @@ class sdGunClass
 				if ( gun._held_by._auto_shoot_in > 0 )
 				return 0;
 				
-				return 3;
+				return 2.5;
 			},
 			onShootAttempt: ( gun, shoot_from_scenario )=>
 			{
@@ -4139,12 +4247,12 @@ class sdGunClass
 				else
 				{
 					sdSound.PlaySound({ name: 'saber_hit2', x:gun.x, y:gun.y, volume: 2, pitch: 3 });
-					
-					if ( gun._held_by.matter >= 2 )
+					let matter_cost = gun.GetBulletCost();
+					if ( gun._held_by.matter >= matter_cost )
 					if ( gun._held_by._key_states.GetKey( 'Mouse1' ) )
 					{
 						gun._held_by._auto_shoot_in = 2;
-						gun._held_by.matter -= 2; // Was 3. It is not that strong to drain matter that fast
+						gun._held_by.matter -= matter_cost; // Was 3. It is not that strong to drain matter that fast
 					}
 				}
 				return true;
@@ -4160,6 +4268,9 @@ class sdGunClass
 				
 				if ( gun.extra[ ID_PROJECTILE_COLOR ] )
 				obj.color = gun.extra[ ID_PROJECTILE_COLOR ];
+			
+				// if ( gun.extra[ ID_HAS_EXALTED_CORE ] ) // Has exalted core been infused?
+				// obj._damage *= 1.25; // Increase damage further by 25%
 				
 				//obj.color = gun.extra[ ID_PROJECTILE_COLOR ];
 				
@@ -4283,6 +4394,9 @@ class sdGunClass
 				
 				if ( gun.extra[ ID_PROJECTILE_COLOR ] )
 				obj.color = gun.extra[ ID_PROJECTILE_COLOR ];
+			
+				// if ( gun.extra[ ID_HAS_EXALTED_CORE ] ) // Has exalted core been infused?
+				// obj._damage *= 1.25; // Increase damage further by 25%
 				
 				//obj.color = gun.extra[ ID_PROJECTILE_COLOR ];
 				
@@ -4329,6 +4443,9 @@ class sdGunClass
 				
 				if ( gun.extra[ ID_PROJECTILE_COLOR ] )
 				obj.color = gun.extra[ ID_PROJECTILE_COLOR ];
+			
+				// if ( gun.extra[ ID_HAS_EXALTED_CORE ] ) // Has exalted core been infused?
+				// obj._damage *= 1.25; // Increase damage further by 25%
 				
 				//obj.color = gun.extra[ ID_PROJECTILE_COLOR ];
 				
@@ -4363,6 +4480,7 @@ class sdGunClass
 			count: 1,
 			spawnable: false,
 			ignore_slot: true,
+			has_description: [ 'Can be used to upgrade workbench' ],
 			onPickupAttempt: ( character, gun )=> // Cancels pickup, made to put in crates
 			{ 
 				return false; 
@@ -4436,6 +4554,9 @@ class sdGunClass
 				
 				if ( gun.extra[ ID_PROJECTILE_COLOR ] )
 				obj.color = gun.extra[ ID_PROJECTILE_COLOR ];
+			
+				// if ( gun.extra[ ID_HAS_EXALTED_CORE ] ) // Has exalted core been infused?
+				// obj._damage *= 1.25; // Increase damage further by 25%
 				
 				//obj.color = gun.extra[ ID_PROJECTILE_COLOR ];
 				
@@ -4485,6 +4606,9 @@ class sdGunClass
 				
 				if ( gun.extra[ ID_PROJECTILE_COLOR ] )
 				obj.color = gun.extra[ ID_PROJECTILE_COLOR ];
+			
+				// if ( gun.extra[ ID_HAS_EXALTED_CORE ] ) // Has exalted core been infused?
+				// obj._damage *= 1.25; // Increase damage further by 25%
 				
 				//obj.color = gun.extra[ ID_PROJECTILE_COLOR ];
 				
@@ -4535,6 +4659,9 @@ class sdGunClass
 				
 				if ( gun.extra[ ID_PROJECTILE_COLOR ] )
 				obj.color = gun.extra[ ID_PROJECTILE_COLOR ];
+			
+				// if ( gun.extra[ ID_HAS_EXALTED_CORE ] ) // Has exalted core been infused?
+				// obj._damage *= 1.25; // Increase damage further by 25%
 				
 				//obj.color = gun.extra[ ID_PROJECTILE_COLOR ];
 				
@@ -4579,6 +4706,9 @@ class sdGunClass
 				
 				if ( gun.extra[ ID_PROJECTILE_COLOR ] )
 				obj.color = gun.extra[ ID_PROJECTILE_COLOR ];
+			
+				// if ( gun.extra[ ID_HAS_EXALTED_CORE ] ) // Has exalted core been infused?
+				// obj._damage *= 1.25; // Increase damage further by 25%
 				
 				//obj.color = gun.extra[ ID_PROJECTILE_COLOR ];
 				
@@ -4616,9 +4746,10 @@ class sdGunClass
 			projectile_properties: { _damage: 0 },
 			ignore_slot: true,
 			spawnable: false,
+			has_description: [ 'Armor: 190', 'Damage absorption: 40%', 'Movement speed reduction: 0%' ],
 			onPickupAttempt: ( character, gun )=> // Cancels pickup and removes itself if player can pickup as armor
 			{ 
-				if ( character.ApplyArmor({ armor: 190, _armor_absorb_perc: 0.4, armor_speed_reduction: 5 }) )
+				if ( character.ApplyArmor({ armor: 190, _armor_absorb_perc: 0.4, armor_speed_reduction: 0 }) )
 				gun.remove();
 			
 				/*if ( ( 1 - character._armor_absorb_perc ) * character.armor <= ( 1 - 0.4 ) * 190 )
@@ -4886,7 +5017,7 @@ class sdGunClass
 			fire_type: 2,
 			spawnable: false,
 			projectile_velocity: sdGun.default_projectile_velocity * 1.7,
-			projectile_properties: { _damage: 72, color: '#33ffff', penetrating: true, _dirt_mult: -0.5 },
+			projectile_properties: { _damage: 72, penetrating: true, _dirt_mult: -0.5 },
 			projectile_properties_dynamic: ( gun )=>{ 
 				
 				let obj = { penetrating: true, _dirt_mult: -0.5 };
@@ -4897,6 +5028,9 @@ class sdGunClass
 				
 				if ( gun.extra[ ID_PROJECTILE_COLOR ] )
 				obj.color = gun.extra[ ID_PROJECTILE_COLOR ];
+			
+				// if ( gun.extra[ ID_HAS_EXALTED_CORE ] ) // Has exalted core been infused?
+				// obj._damage *= 1.25; // Increase damage further by 25%
 				
 				//obj.color = gun.extra[ ID_PROJECTILE_COLOR ];
 				
@@ -4946,6 +5080,9 @@ class sdGunClass
 				
 				if ( gun.extra[ ID_PROJECTILE_COLOR ] )
 				obj.color = gun.extra[ ID_PROJECTILE_COLOR ];
+			
+				// if ( gun.extra[ ID_HAS_EXALTED_CORE ] ) // Has exalted core been infused?
+				// obj._damage *= 1.25; // Increase damage further by 25%
 				
 				//obj.color = gun.extra[ ID_PROJECTILE_COLOR ];
 				
@@ -5092,6 +5229,7 @@ class sdGunClass
 			count: 0,
 			projectile_velocity: 16,
 			spawnable: false,
+			has_description: [ 'Summons an Instructor to aid you', 'Lasts until death' ],
 			GetAmmoCost: ()=>
 			{
 				return 800;
@@ -5389,6 +5527,9 @@ class sdGunClass
 				
 				if ( gun.extra[ ID_PROJECTILE_COLOR ] )
 				obj.color = gun.extra[ ID_PROJECTILE_COLOR ];
+			
+				// if ( gun.extra[ ID_HAS_EXALTED_CORE ] ) // Has exalted core been infused?
+				// obj._damage *= 1.25; // Increase damage further by 25%
 				
 				//obj.color = gun.extra[ ID_PROJECTILE_COLOR ];
 				
@@ -5654,7 +5795,7 @@ class sdGunClass
 			sound: 'gun_rifle',
 			
 			//title: 'Rifle',
-			title_dynamic: ( gun )=> { return gun.extra[ ID_TITLE ]; },
+			title_dynamic: ( gun )=> { return gun.extra ? gun.extra[ ID_TITLE ] : 'title_dynamic?'; },
 			
 			//slot: 2,
 			slot_dynamic: ( gun )=> { return gun.extra[ ID_SLOT ]; },
@@ -5717,6 +5858,9 @@ class sdGunClass
 				obj._knock_scale *= gun.extra[ ID_RECOIL_SCALE ];
 				
 				obj.color = gun.extra[ ID_PROJECTILE_COLOR ];
+				
+				// if ( gun.extra[ ID_HAS_EXALTED_CORE ] ) // Has exalted core been infused?
+				// obj._damage *= 1.25; // Increase damage further by 25%
 				
 				return obj;
 			},
@@ -5947,6 +6091,7 @@ class sdGunClass
 			projectile_properties: { _damage: 0 },
 			ignore_slot: true,
 			spawnable: false,
+			has_description:[ 'Regeneration rate: 10 armor/sec' ],
 			onPickupAttempt: ( character, gun )=> // Cancels pickup and removes itself if player can pickup
 			{ 
 				if ( character.ApplyArmorRegen( 1000 ) )
@@ -6019,6 +6164,7 @@ class sdGunClass
 			spawnable: true,
 			category: 'Other',
 			is_sword: false,
+			has_description: [ 'Used to clean stains off walls'],
 			GetAmmoCost: ()=>
 			{
 				return 1;
@@ -6406,6 +6552,9 @@ class sdGunClass
 				
 				if ( gun.extra[ ID_PROJECTILE_COLOR ] )
 				obj.color = gun.extra[ ID_PROJECTILE_COLOR ];
+			
+				// if ( gun.extra[ ID_HAS_EXALTED_CORE ] ) // Has exalted core been infused?
+				// obj._damage *= 1.25; // Increase damage further by 25%
 				
 				//obj.color = gun.extra[ ID_PROJECTILE_COLOR ];
 				
@@ -6470,12 +6619,12 @@ class sdGunClass
 				{
 					//sdSound.PlaySound({ name: 'gun_pistol', x:gun.x, y:gun.y });
 					sdSound.PlaySound({ name:'enemy_mech_attack4', x:gun.x, y:gun.y, volume:1.5, pitch: 2 });
-					
-					if ( gun._held_by.matter >= 4 )
+					let matter_cost = gun.GetBulletCost();
+					if ( gun._held_by.matter >= matter_cost )
 					if ( gun._held_by._key_states.GetKey( 'Mouse1' ) )
 					{
 						gun._held_by._auto_shoot_in = ( 14 / ( 1 + gun._combo / 10 ) ); // Faster rate of fire when shooting more
-						gun._held_by.matter -= 4;
+						gun._held_by.matter -= matter_cost;
 						gun._combo_timer = 16;
 						if ( gun._combo < 10 )
 						gun._combo++; // Speed up rate of fire, the longer it shoots
@@ -6498,6 +6647,9 @@ class sdGunClass
 				
 				if ( gun.extra[ ID_PROJECTILE_COLOR ] )
 				obj.color = gun.extra[ ID_PROJECTILE_COLOR ];
+			
+				// if ( gun.extra[ ID_HAS_EXALTED_CORE ] ) // Has exalted core been infused?
+				// obj._damage *= 1.25; // Increase damage further by 25%
 				
 				//obj.color = gun.extra[ ID_PROJECTILE_COLOR ];
 				
@@ -6546,6 +6698,9 @@ class sdGunClass
 				
 				if ( gun.extra[ ID_PROJECTILE_COLOR ] )
 				obj.color = gun.extra[ ID_PROJECTILE_COLOR ];
+			
+				// if ( gun.extra[ ID_HAS_EXALTED_CORE ] ) // Has exalted core been infused?
+				// obj._damage *= 1.25; // Increase damage further by 25%
 				
 				//obj.color = gun.extra[ ID_PROJECTILE_COLOR ];
 				
@@ -6597,6 +6752,9 @@ class sdGunClass
 				
 				if ( gun.extra[ ID_PROJECTILE_COLOR ] )
 				obj.color = gun.extra[ ID_PROJECTILE_COLOR ];
+			
+				// if ( gun.extra[ ID_HAS_EXALTED_CORE ] ) // Has exalted core been infused?
+				// obj._damage *= 1.25; // Increase damage further by 25%
 				
 				//obj.color = gun.extra[ ID_PROJECTILE_COLOR ];
 				
@@ -6821,6 +6979,9 @@ class sdGunClass
 				
 				if ( gun.extra[ ID_PROJECTILE_COLOR ] )
 				obj.color = gun.extra[ ID_PROJECTILE_COLOR ];
+			
+				// if ( gun.extra[ ID_HAS_EXALTED_CORE ] ) // Has exalted core been infused?
+				// obj._damage *= 1.25; // Increase damage further by 25%
 				
 				//obj.color = gun.extra[ ID_PROJECTILE_COLOR ];
 				
@@ -6858,6 +7019,7 @@ class sdGunClass
 			matter_cost: 1000,
 			projectile_velocity: 10,
 			spawnable: false,
+			has_description: [ 'Amplifies speed of entities hit by projectile', 'Duration: 2-3 seconds' ],
 			GetAmmoCost: ( gun, shoot_from_scenario )=>
 			{
 				return 300;
@@ -6889,7 +7051,7 @@ class sdGunClass
 						{
 							let e = nears[ i ];
 							
-							if ( e !== bullet._gun )
+							if ( e !== bullet._gun && !e.is( sdBaseShieldingUnit ) )
 							if ( typeof e._time_amplification !== 'undefined' )
 							{
 								let t = 0;
@@ -6957,6 +7119,7 @@ class sdGunClass
 			matter_cost: 1000,
 			projectile_velocity: 10,
 			spawnable: false,
+			has_description: [ 'Creates illusions of objects hit' ],
 			GetAmmoCost: ( gun, shoot_from_scenario )=>
 			{
 				return 600;
@@ -7002,6 +7165,9 @@ class sdGunClass
 				
 				if ( gun.extra[ ID_PROJECTILE_COLOR ] )
 				obj.color = gun.extra[ ID_PROJECTILE_COLOR ];
+			
+				// if ( gun.extra[ ID_HAS_EXALTED_CORE ] ) // Has exalted core been infused?
+				// obj._damage *= 1.25; // Increase damage further by 25%
 				
 				return obj;
 			},
@@ -7084,7 +7250,7 @@ class sdGunClass
 				if ( gun._held_by._auto_shoot_in > 0 )
 				return 0;
 				
-				return 6;
+				return 3.5;
 			},
 			onShootAttempt: ( gun, shoot_from_scenario )=>
 			{
@@ -7107,12 +7273,12 @@ class sdGunClass
 				{
 					//sdSound.PlaySound({ name: 'gun_pistol', x:gun.x, y:gun.y });
 					sdSound.PlaySound({ name:'cube_attack', pitch: 4, x:gun.x, y:gun.y, volume:1.2 });
-					
-					if ( gun._held_by.matter >= 6 )
+					let matter_cost = gun.GetBulletCost();
+					if ( gun._held_by.matter >= matter_cost )
 					if ( gun._held_by._key_states.GetKey( 'Mouse1' ) )
 					{
 						gun._held_by._auto_shoot_in = 3;
-						gun._held_by.matter -= 6;
+						gun._held_by.matter -= matter_cost; // Zektaron beam is at 6 or 7 while being 2x as strong
 					}
 				}
 				return true;
@@ -7120,7 +7286,7 @@ class sdGunClass
 			projectile_properties: { _rail: true, _damage: 32, color: '#ffff00', _temperature_addition: 700 }, // Combined with fire rate
 			projectile_properties_dynamic: ( gun )=>{ 
 				
-				let obj = { _rail: true, _damage: 32, color: '#ffff00', _temperature_addition: 700 }; // High fire damage. Custom guns go to 500 temperature, so why not.
+				let obj = { _rail: true, _rail_alt:true, _damage: 32, color: '#ffff00', _temperature_addition: 700 }; // High fire damage. Custom guns go to 500 temperature, so why not.
 				obj._knock_scale = 0.01 * 8 * gun.extra[ ID_DAMAGE_MULT ];
 				obj._damage = gun.extra[ ID_DAMAGE_VALUE ]; // Damage value is set onMade
 				obj._damage *= gun.extra[ ID_DAMAGE_MULT ];
@@ -7128,8 +7294,17 @@ class sdGunClass
 				
 				if ( gun.extra[ ID_PROJECTILE_COLOR ] )
 				obj.color = gun.extra[ ID_PROJECTILE_COLOR ];
+			
+				// if ( gun.extra[ ID_HAS_EXALTED_CORE ] ) // Has exalted core been infused?
+				// obj._damage *= 1.25; // Increase damage further by 25%
 				
 				//obj.color = gun.extra[ ID_PROJECTILE_COLOR ];
+				obj._custom_target_reaction_before_damage_tests = ( bullet, target_entity )=>
+				{
+					let temp = sdStatusEffect.GetTemperature( target_entity ) || 0; // Check entity temperature
+					if ( temp > 700 ) // On fire?
+					obj._damage = obj._damage * 1.25; // 25% more damage on targets set on fire
+				};
 				
 				return obj;
 			},
@@ -7177,6 +7352,9 @@ class sdGunClass
 				
 				if ( gun.extra[ ID_PROJECTILE_COLOR ] )
 				obj.color = gun.extra[ ID_PROJECTILE_COLOR ];
+			
+				// if ( gun.extra[ ID_HAS_EXALTED_CORE ] ) // Has exalted core been infused?
+				// obj._damage *= 1.25; // Increase damage further by 25%
 				
 				//obj.color = gun.extra[ ID_PROJECTILE_COLOR ];
 				
@@ -7219,7 +7397,7 @@ class sdGunClass
 				if ( gun._held_by._auto_shoot_in > 0 )
 				return 0;
 				
-				return 4;
+				return 3;
 			},
 			onShootAttempt: ( gun, shoot_from_scenario )=>
 			{
@@ -7249,12 +7427,12 @@ class sdGunClass
 				{
 					sdSound.PlaySound({ name: 'gun_pistol', x:gun.x, y:gun.y,volume:0.8, pitch: 1.2 });
 					sdSound.PlaySound({ name:'enemy_mech_attack4', x:gun.x, y:gun.y, volume:1.5, pitch: 0.7 });
-					
-					if ( gun._held_by.matter >= 4 )
+					let matter_cost = gun.GetBulletCost();
+					if ( gun._held_by.matter >= matter_cost )
 					if ( gun._held_by._key_states.GetKey( 'Mouse1' ) )
 					{
 						gun._held_by._auto_shoot_in = 4;
-						gun._held_by.matter -= 4;
+						gun._held_by.matter -= matter_cost;
 					}
 					else
 					gun._held_by._key_states.SetKey( 'KeyS', 0 ); // Reset crouch state
@@ -7272,6 +7450,9 @@ class sdGunClass
 				
 				if ( gun.extra[ ID_PROJECTILE_COLOR ] )
 				obj.color = gun.extra[ ID_PROJECTILE_COLOR ];
+			
+				// if ( gun.extra[ ID_HAS_EXALTED_CORE ] ) // Has exalted core been infused?
+				// obj._damage *= 1.25; // Increase damage further by 25%
 				
 				//obj.color = gun.extra[ ID_PROJECTILE_COLOR ];
 				
@@ -7314,14 +7495,6 @@ class sdGunClass
 			projectile_properties: 
 			{ 
 				time_left: 1, _damage: 64, color: 'transparent', _knock_scale:0.1, _dirt_mult: -2,
-				/*
-				_custom_target_reaction:( bullet, target_entity )=>
-				{
-					if ( target_entity.is( sdCrystal ) )
-					{
-						target_entity._being_sawed_time = sdWorld.time;
-					}
-				}*/
 			},
 			projectile_properties_dynamic: ( gun )=>{ 
 				
@@ -7331,15 +7504,13 @@ class sdGunClass
 				obj._damage *= gun.extra[ ID_DAMAGE_MULT ];
 				obj._knock_scale *= gun.extra[ ID_RECOIL_SCALE ];
 				
-				obj._custom_target_reaction = ( bullet, target_entity )=>
+				obj._custom_target_reaction_before_damage_tests = ( bullet, target_entity )=>
 				{
 					if ( target_entity.is( sdCrystal ) )
 					{
 						target_entity._being_sawed_time = sdWorld.time;
 					}
 				};
-				
-				//obj.color = gun.extra[ ID_PROJECTILE_COLOR ];
 				
 				return obj;
 			},
@@ -7425,6 +7596,9 @@ class sdGunClass
 				
 				if ( gun.extra[ ID_PROJECTILE_COLOR ] )
 				obj.color = gun.extra[ ID_PROJECTILE_COLOR ];
+			
+				// if ( gun.extra[ ID_HAS_EXALTED_CORE ] ) // Has exalted core been infused?
+				// obj._damage *= 1.25; // Increase damage further by 25%
 				
 				//obj.color = gun.extra[ ID_PROJECTILE_COLOR ];
 				
@@ -7619,6 +7793,9 @@ class sdGunClass
 				
 				if ( gun.extra[ ID_PROJECTILE_COLOR ] )
 				obj.color = gun.extra[ ID_PROJECTILE_COLOR ];
+			
+				// if ( gun.extra[ ID_HAS_EXALTED_CORE ] ) // Has exalted core been infused?
+				// obj._damage *= 1.25; // Increase damage further by 25%
 
 				//obj.color = gun.extra[ ID_PROJECTILE_COLOR ];
 				
@@ -7668,6 +7845,9 @@ class sdGunClass
 				
 				if ( gun.extra[ ID_PROJECTILE_COLOR ] )
 				obj.color = gun.extra[ ID_PROJECTILE_COLOR ];
+			
+				// if ( gun.extra[ ID_HAS_EXALTED_CORE ] ) // Has exalted core been infused?
+				// obj._damage *= 1.25; // Increase damage further by 25%
 
 				return obj;
 			},
@@ -8210,6 +8390,9 @@ class sdGunClass
 				
 				if ( gun.extra[ ID_PROJECTILE_COLOR ] )
 				obj.color = gun.extra[ ID_PROJECTILE_COLOR ];
+			
+				// if ( gun.extra[ ID_HAS_EXALTED_CORE ] ) // Has exalted core been infused?
+				// obj._damage *= 1.25; // Increase damage further by 25%
 				
 				//obj.color = gun.extra[ ID_PROJECTILE_COLOR ];
 				
@@ -8257,6 +8440,9 @@ class sdGunClass
 				
 				if ( gun.extra[ ID_PROJECTILE_COLOR ] )
 				obj.color = gun.extra[ ID_PROJECTILE_COLOR ];
+			
+				// if ( gun.extra[ ID_HAS_EXALTED_CORE ] ) // Has exalted core been infused?
+				// obj._damage *= 1.25; // Increase damage further by 25%
 				
 				//obj.color = gun.extra[ ID_PROJECTILE_COLOR ];
 				
@@ -8306,6 +8492,9 @@ class sdGunClass
 				obj._critical_hit_range = 24; // guide: 16 = A dirt block
 				obj._weak_critical_hit_range = 48; // 3 dirt blocks
 				obj._dirt_mult = -0.25; // To not make it too strong vs dirt
+				
+				// if ( gun.extra[ ID_HAS_EXALTED_CORE ] ) // Has exalted core been infused?
+				// obj._damage *= 1.25; // Increase damage further by 25%
 				
 				//obj.color = gun.extra[ ID_PROJECTILE_COLOR ];
 				
@@ -8571,11 +8760,11 @@ class sdGunClass
 		{
 			if ( target_entity.is( sdLost ) )
 			{
-				target_entity.DamageWithEffect( 10, bullet._owner );
+				target_entity.DamageWithEffect( 9, bullet._owner );
 			}
 			else
 			{
-				sdLost.ApplyAffection( target_entity, 10, bullet, sdLost.FILTER_GOLDEN );
+				sdLost.ApplyAffection( target_entity, 9, bullet, sdLost.FILTER_GOLDEN );
 			}
 		};
 		sdGun.classes[ sdGun.CLASS_ANCIENT_TRIPLE_RAIL = 131 ] = // Cube gun but deals lost damage. Cannot be upgraded. Obtainable only via Ancient cubes.
@@ -8610,6 +8799,7 @@ class sdGunClass
 			count: 1,
 			spawnable: false,
 			ignore_slot: true,
+			has_description: [ 'Needed for weapon merging in weapon merging bench' ],
 			onPickupAttempt: ( character, gun )=> // Cancels pickup, made to put in crates or weapon merger
 			{ 
 				return false; 
@@ -8674,6 +8864,7 @@ class sdGunClass
 			spawnable: false,
 			ignore_slot: true,
 			apply_shading: false,
+			has_description: [ 'Increases max matter capacity on pickup' ],
 			onPickupAttempt: ( character, gun )=> // Cancels pickup and removes itself if player can pickup
 			{ 
 				// 20 more levels, 20 * 45 more matter, 4 * 45 matter per shard
@@ -8728,6 +8919,9 @@ class sdGunClass
 				
 				if ( gun.extra[ ID_PROJECTILE_COLOR ] )
 				obj.color = gun.extra[ ID_PROJECTILE_COLOR ];
+			
+				// if ( gun.extra[ ID_HAS_EXALTED_CORE ] ) // Has exalted core been infused?
+				// obj._damage *= 1.25; // Increase damage further by 25%
 				
 				//obj.color = gun.extra[ ID_PROJECTILE_COLOR ];
 				
@@ -8923,7 +9117,65 @@ class sdGunClass
 				gun.sd_filter = remover_sd_filter;
 			}
 		};
+		sdGun.classes[ sdGun.CLASS_UPGRADE_STATION_CHIPSET = 138 ] = 
+		{
+			image: sdWorld.CreateImageFromFile( 'upgrade_station_chipset' ),
+			sound: 'gun_defibrillator',
+			title: 'Upgrade station chipset',
+			sound_pitch: 1,
+			slot: 0,
+			reload_time: 30,
+			muzzle_x: null,
+			ammo_capacity: -1,
+			count: 1,
+			spawnable: false,
+			ignore_slot: true,
+			has_description: [ 'Used for upgrading the Upgrade station' ],
+			onPickupAttempt: ( character, gun )=> // Cancels pickup, made to put in crates or weapon merger
+			{ 
+				return false; 
+			}
+		};
 
+		sdGun.classes[ sdGun.CLASS_EXALTED_CORE = 139 ] = 
+		{
+			image: sdWorld.CreateImageFromFile( 'exalted_core' ),
+			sound: 'gun_defibrillator',
+			title: 'Exalted core',
+			sound_pitch: 1,
+			slot: 0,
+			reload_time: 30,
+			muzzle_x: null,
+			ammo_capacity: -1,
+			count: 1,
+			spawnable: false,
+			ignore_slot: true,
+			has_description: [ 'Can be merged with weapons to increase their damage' ],
+			onPickupAttempt: ( character, gun )=> // Cancels pickup, made to put in crates or weapon merger
+			{ 
+				return false; 
+			}
+		};
+		
+		sdGun.classes[ sdGun.CLASS_CUBE_FUSION_CORE = 140 ] = 
+		{
+			image: sdWorld.CreateImageFromFile( 'cube_fusion_core' ),
+			sound: 'gun_defibrillator',
+			title: 'Cube fusion core',
+			sound_pitch: 1,
+			slot: 0,
+			reload_time: 30,
+			muzzle_x: null,
+			ammo_capacity: -1,
+			count: 1,
+			spawnable: false,
+			ignore_slot: true,
+			has_description: [ 'Can be merged with weapons to reduce their matter cost' ],
+			onPickupAttempt: ( character, gun )=> // Cancels pickup, made to put in crates or weapon merger
+			{ 
+				return false; 
+			}
+		};
 		// Add new gun classes above this line //
 		
 		let index_to_const = [];

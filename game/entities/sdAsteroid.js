@@ -1,4 +1,6 @@
 
+/* global Infinity, sdShop */
+
 import sdWorld from '../sdWorld.js';
 import sdEntity from './sdEntity.js';
 import sdEffect from './sdEffect.js';
@@ -7,6 +9,7 @@ import sdMimic from './sdMimic.js';
 import sdBlock from './sdBlock.js';
 import sdWeather from './sdWeather.js';
 import sdBullet from './sdBullet.js';
+import sdDeepSleep from './sdDeepSleep.js';
 
 class sdAsteroid extends sdEntity
 {
@@ -21,6 +24,7 @@ class sdAsteroid extends sdEntity
 		sdAsteroid.TYPE_DEFAULT = 0;
 		sdAsteroid.TYPE_SHARDS = 1;
 		sdAsteroid.TYPE_FLESH = 2;
+		sdAsteroid.TYPE_MISSILE = 3;
 		
 		sdWorld.entity_classes[ this.name ] = this; // Register for object spawn
 	}
@@ -87,23 +91,33 @@ class sdAsteroid extends sdEntity
 		
 		//this._max_build_tool_level_near = 0;
 
-		this.scale = Math.max( 0.8, Math.random() * 2 ) * 100; // Scale / size of the asteroid
 		//this._type = params._type || Math.random() < 0.2 ? 1 : 0;
 		this.landed = false;
+		this._warhead_detonated = false;
+
 		
 		this.type = ( params.type !== undefined ) ? params.type : ( Math.random() < 0.005 ) ? sdAsteroid.TYPE_FLESH : ( Math.random() < 0.5 ) ? sdAsteroid.TYPE_SHARDS : sdAsteroid.TYPE_DEFAULT;
-		
+		this.scale = ( this.type === sdAsteroid.TYPE_MISSILE ) ? 100 : Math.max( 0.8, Math.random() * 2 ) * 100; // Scale / size of the asteroid
+
 		this._hmax = 60 * this.scale / 100; // Asteroids that land need more HP to survive the "explosion" when they land
 		this._hea = this._hmax;
 		
 		this.sx = Math.random() * 12 - 6;
 		this.sy = 10;
 		
+		if ( this.type === sdAsteroid.TYPE_MISSILE )
+		{
+			// Velocity was 32 originally. But missiles are just killing new players too often, they probably can't be that fast and that deadly
+			this.sx *= 0.5;
+			//this.sy *= 1.5;
+		}
+		
 		// Check for flesh asteroids to only fleshify near this area
 		this._land_x = 0;
 		this._land_y = 0;
 
 		this.matter_max = 0;
+
 		
 		this._witnessers = new WeakSet();
 		
@@ -160,7 +174,16 @@ class sdAsteroid extends sdEntity
 			}
 		}
 	}
-	
+	PlayerIsHooked( character, GSPEED )
+	{
+		this.AsteroidLanded();
+	}
+	onBeforeLongRangeTeleport( lrtp ) // Called before snapshot is taken
+	{
+		this.AsteroidLanded();
+		this._land_x = 0;
+		this._land_y = -Number.MAX_SAFE_INTEGER;
+	}
 	AsteroidLanded()
 	{
 		if ( !this.landed )
@@ -177,13 +200,55 @@ class sdAsteroid extends sdEntity
 				this._land_y = this.y;
 			}
 			else
+			if ( this.type === sdAsteroid.TYPE_MISSILE ) 
+			{
+				if ( Math.random() < 0.9 ) this.Fragmentation(); // Small chance to malfunction, for realism
+			}
+			else
 			sdWorld.SendEffect({ x:this.x, y:this.y, radius:36 * this.scale/100, damage_scale:2, type:sdEffect.TYPE_EXPLOSION, color:sdEffect.default_explosion_color, can_hit_owner:false, owner:this });
 
 			this.sx *= 0.02;
 			this.sy *= 0.02;
 		}
 	}
+	Fragmentation()
+	{
+		if ( sdWorld.is_server && !this._warhead_detonated ) { // Prevent visual bugs on lagging client
+			let initial_rand = Math.random() * Math.PI * 2;
+			let steps = Math.min( 32, Math.max( 16, 32 * this.scale / 100 / 70 * 32 ) );
+			let an;
+			let bullet_obj;
+						
+			for ( let s = 0; s < steps; s++ )
+			{
+				an = s / steps * Math.PI * 2;
+				
+				bullet_obj = new sdBullet({ 
+					x: this.x + Math.sin( an + initial_rand ) * 1, 
+					y: this.y + Math.cos( an + initial_rand ) * 1 
+				});	
+			
+				bullet_obj.sx = Math.sin( an + initial_rand ) * 16;
+				bullet_obj.sy = Math.cos( an + initial_rand ) * 16;
+				bullet_obj.time_left = 500 * this.scale / 100 / 16 * 2;
+												
+				bullet_obj._damage = 32;
+				//bullet_obj._temperature_addition = 1000;
 
+				bullet_obj._affected_by_gravity = true;
+				bullet_obj.gravity_scale = 2;
+
+				bullet_obj._owner = this;
+				
+				bullet_obj._can_hit_owner = true;
+				bullet_obj.color = '#ffff00';
+
+				sdEntity.entities.push( bullet_obj );
+
+				this._warhead_detonated = true;
+			}
+		}
+	}
 	onThink( GSPEED ) // Class-specific, if needed
 	{
 		if ( this.landed )
@@ -194,7 +259,7 @@ class sdAsteroid extends sdEntity
 			
 			this._an += this.sx * GSPEED * 20 / 100 / ( this.scale / 100 );
 			
-			if ( this._time_to_despawn < 0 )
+			if ( this.type !== sdAsteroid.TYPE_MISSILE && this._time_to_despawn < 0 )
 			{
 				this.remove();
 				this._broken = false;
@@ -225,6 +290,9 @@ class sdAsteroid extends sdEntity
 					
 					let v = sdWeather.only_instance.TraceDamagePossibleHere( c.x, c.y, Infinity, false, true ) ? 1 : 0.2;
 					
+					if ( this.type === sdAsteroid.TYPE_MISSILE )
+					sdSound.PlaySound({ name:'missile_incoming', x:((this.x + this.sx * 60)+c.x)/2, y:((this.y + this.sy * 60)+c.y)/2, volume:v, pitch:1 }, [ c._socket ] );
+					else
 					sdSound.PlaySound({ name:'asteroid', x:((this.x + this.sx * 60)+c.x)/2, y:((this.y + this.sy * 60)+c.y)/2, volume:v, pitch:1 / ( ( this.scale + 100 ) / 200 ) }, [ c._socket ] );
 				}
 			}
@@ -238,6 +306,13 @@ class sdAsteroid extends sdEntity
 				// Fly past them as if nothing is here?
 				this.x = new_x;
 				this.y = new_y;
+				
+				//let old_v = sdDeepSleep.track_entity_stucking_ignore_temporary;
+				//sdDeepSleep.track_entity_stucking_ignore_temporary = true;
+				//{
+					sdWorld.UpdateHashPosition( this, false, true );
+				//}
+				//sdDeepSleep.track_entity_stucking_ignore_temporary = old_v;
 				/*
 				
 				// Despawn asteroids flying into sdDeepSleep
@@ -253,6 +328,7 @@ class sdAsteroid extends sdEntity
 			{
 				this.x = new_x;
 				this.y = new_y;
+				sdWorld.UpdateHashPosition( this, false, true );
 			}
 		}
 	}
@@ -288,6 +364,11 @@ class sdAsteroid extends sdEntity
 
 				}
 			}
+			if ( this.type === sdAsteroid.TYPE_MISSILE )
+			{
+				sdWorld.SendEffect({ x:this.x, y:this.y, radius:75 * this.scale/100, damage_scale:2, type:sdEffect.TYPE_EXPLOSION, color:sdEffect.default_explosion_color, can_hit_owner:false, owner:this });
+				this.Fragmentation(); // Always activate warhead in case of destruction
+			}
 			else
 			sdWorld.BasicEntityBreakEffect( this, 3, undefined, undefined, 1.4 );
 		}
@@ -295,12 +376,16 @@ class sdAsteroid extends sdEntity
 	get title()
 	{
 		if ( this.type === sdAsteroid.TYPE_FLESH )
-		return T('Space flesh asteroid');
+		return ('Space flesh asteroid');
 	
 		if ( this.type === sdAsteroid.TYPE_SHARDS )
-		return T('Asteroid with crystal shards');
+		return ('Asteroid with crystal shards');
+
+		if ( this.type === sdAsteroid.TYPE_MISSILE )
+		return ('Cruise missile');
+
 	
-		return T('Asteroid');
+		return ('Asteroid');
 	}
 	
 	DrawHUD( ctx, attached ) // foreground layer

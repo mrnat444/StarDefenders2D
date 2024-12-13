@@ -199,6 +199,14 @@ class sdGun extends sdEntity
 					from_entity.extra = new_extra;
 					from_entity.sd_filter = sdGun.score_shard_recolor_tiers[ new_extra ];
 					from_entity.ttl = from_entity.ttl + this.ttl;
+					
+					if ( this.follow )
+					if ( !this.follow._is_being_removed )
+					{
+						if ( !from_entity.follow || from_entity.follow._is_being_removed )
+						from_entity.follow = this.follow;
+					}
+					
 					this.remove();
 					return;
 				}
@@ -400,6 +408,10 @@ class sdGun extends sdEntity
 	GetSlot()
 	{
 		return sdGun.classes[ this.class ].slot_dynamic ? sdGun.classes[ this.class ].slot_dynamic( this ) : sdGun.classes[ this.class ].slot;
+	}
+	get title()
+	{
+		return this.GetTitle();
 	}
 	GetTitle()
 	{
@@ -629,6 +641,9 @@ class sdGun extends sdEntity
 			
 			if ( this._held_by._build_params === null )
 			return Infinity; // Unable to place anyway
+		
+			if ( !this._held_by._god && sdShop.IsGodModeOnlyItem( this._held_by._build_params ) )
+			return Infinity;
 			
 			//globalThis.EnforceChangeLog( this, '_held_by' );
 			
@@ -638,11 +653,17 @@ class sdGun extends sdEntity
 				return Infinity; // Can't be built
 					
 				if ( typeof this._held_by._build_params.upgrade_name !== 'undefined' )
-				if ( ( this._held_by._upgrade_counters[ this._held_by._build_params.upgrade_name ] || 0 ) >= sdShop.upgrades[ this._held_by._build_params.upgrade_name ].max_level )
 				{
-					//this._held_by_unenforce();
+					let cur_level = ( this._held_by._upgrade_counters[ this._held_by._build_params.upgrade_name ] || 0 );
+					let max_level = sdShop.upgrades[ this._held_by._build_params.upgrade_name ].max_level;
+					let min_station_level_needed = ( sdShop.upgrades[ this._held_by._build_params.upgrade_name ].min_upgrade_station_level || 0 );
+					let max_level_with_station = ( sdShop.upgrades[ this._held_by._build_params.upgrade_name ].max_with_upgrade_station_level || max_level );
+					if ( ( cur_level >= max_level && this._held_by.GetUpgradeStationLevel() < min_station_level_needed ) || ( cur_level >= max_level_with_station ) )
+					{
+						//this._held_by_unenforce();
 				
-					return Infinity; // Maxed out
+						return Infinity; // Maxed out
+					}
 				}
 				
 				if ( typeof this._held_by._build_params.matter_cost !== 'undefined' )
@@ -714,12 +735,14 @@ class sdGun extends sdEntity
 			return Infinity;
 		}
 		
+		let mult = ( this.extra[ 20 ] ) ? 0.75 : 1; // Cube fusion core merging reduces weapon matter cost by 25%
+		
 		if ( sdGun.classes[ this.class ].GetAmmoCost )
-		return sdGun.classes[ this.class ].GetAmmoCost( this, shoot_from_scenario );
+		return mult * sdGun.classes[ this.class ].GetAmmoCost( this, shoot_from_scenario );
 	
 		//let dmg_mult = 1;
 		
-		return sdGun.GetProjectileCost( projectile_properties, this._count, this._temperature_addition );
+		return mult * sdGun.GetProjectileCost( projectile_properties, this._count, this._temperature_addition );
 	}
 	
 	static GetProjectileCost( projectile_properties, _count=1, _temperature_addition=0 )
@@ -943,8 +966,19 @@ class sdGun extends sdEntity
 						x:this.x, y:this.y, 
 						volume: ( 0.75 + scale * 0.25 ) * 0.5 * ( sdGun.classes[ this.class ].sound_volume || 1 ), 
 						pitch: pitch });
-				}
 			
+				}
+				
+				if ( this.extra[ 19 ] ) // Has exalted core fused?
+				{
+					sdSound.PlaySound({ name:'turret', 
+						x:this.x, y:this.y, 
+						volume: 1, 
+						pitch: 1.25 });
+						
+					// On lower volume it can barely be heard
+				}
+				
 				this.reload_time_left = this._reload_time;
 				if ( sdGun.classes[ this.class ].burst )
 				if ( this.burst_ammo <= 0 )
@@ -1067,6 +1101,10 @@ class sdGun extends sdEntity
 					
 						if ( typeof projectile_properties._armor_penetration_level !== 'undefined' )
 						bullet_obj._armor_penetration_level = projectile_properties._armor_penetration_level;
+					
+						if ( this.extra[ 19 ] ) // Has exalted core infused?
+						bullet_obj._damage *= 1.25; // Increase damage by 25%
+						// Why didn't I think of this earlier? - Booraz
 					
 						/*if ( globalThis.CATCH_ERRORS )
 						if ( isNaN( -bullet_obj.sx * 0.3 * bullet_obj._knock_scale ) || 
@@ -1224,6 +1262,17 @@ class sdGun extends sdEntity
 		}
 		return true;
 	}
+	/*get _held_by()
+	{
+		debugger;
+		return this.held_by;
+	}
+	set _held_by(v)
+	{
+		debugger;
+		this.held_by = v;
+	}
+	*/
 	onThink( GSPEED ) // Class-specific, if needed
 	{
 		if ( !sdWorld.is_singleplayer )
@@ -1504,10 +1553,33 @@ class sdGun extends sdEntity
 	{
 		if ( !this._held_by )
 		{
-			sdEntity.Tooltip( ctx, this.GetTitle() );
-
-			if ( !sdGun.classes[ this.class ].ignore_slot )
-			sdEntity.Tooltip( ctx, 'Slot ' + this.GetSlot(), 0, 8, '#ffff00' );
+			
+			let xx = 0;
+			let has_description = sdGun.classes[ this.class ].has_description;
+			
+			let has_slot = !sdGun.classes[ this.class ].ignore_slot;
+			
+			if ( has_description )
+			xx = Math.min( xx, 16 - ( sdGun.classes[ this.class ].has_description.length * 8 ) - ( has_slot ? 8 : 0 ) );
+		
+			// I am making this too complicated - Booraz
+		
+			
+			sdEntity.Tooltip( ctx, this.GetTitle(), 0, xx );
+			xx += 8;
+			if ( has_slot )
+			{
+				sdEntity.Tooltip( ctx, 'Slot ' + this.GetSlot(), 0, xx, '#ffff00' );
+				xx += 8;
+			}
+			if ( has_description ) // Description of items ( like Cube shards or armor, for example )
+			{
+				for( let i = 0; i < sdGun.classes[ this.class ].has_description.length; i++ )
+				{
+					sdEntity.Tooltip( ctx, sdGun.classes[ this.class ].has_description[ i ], 0, xx, '#aaffaa' );
+					xx += 8;
+				}
+			}
 		}
 	}
 	Draw( ctx, attached )

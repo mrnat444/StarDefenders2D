@@ -70,6 +70,8 @@ class sdGrub extends sdEntity
 		
 		//this.filter = 'none';
 		
+		this._hibernation_check_timer = 30;
+		
 		this._last_speak = 0;
 		this._speak_id = -1; // Required by speak effects // last voice message
 	}
@@ -101,6 +103,10 @@ class sdGrub extends sdEntity
 	GetBleedEffectHue()
 	{
 		return -55;
+	}
+	CanBuryIntoBlocks()
+	{
+		return 1; // 0 = no blocks, 1 = natural blocks, 2 = corruption, 3 = flesh blocks	
 	}
 	Damage( dmg, initiator=null )
 	{
@@ -342,15 +348,32 @@ class sdGrub extends sdEntity
 				}
 			}
 		}
+		if ( sdWorld.is_server )
+		{
+			if ( this._last_bite < sdWorld.time - ( 1000 * 60 * 3 ) ) // 3 minutes since last attack?
+			{
+				this._hibernation_check_timer -= GSPEED;
+				
+				if ( this._hibernation_check_timer < 0 )
+				{
+					this._hibernation_check_timer = 30 * 30; // Check if hibernation is possible every 30 seconds
++					this.AttemptBlockBurying(); // Attempt to hibernate inside nearby blocks
+				}
+			}
+		}
+	}
+	get title()
+	{
+		return 'Grub';
 	}
 	DrawHUD( ctx, attached ) // foreground layer
 	{
 		if ( this.death_anim === 0 )
-		sdEntity.Tooltip( ctx, "Grub" );
+		sdEntity.Tooltip( ctx, this.title );
 	}
 	Draw( ctx, attached )
 	{
-		ctx.filter = this.filter;
+		//ctx.filter = this.filter;
 		
 		ctx.scale( this.side, 1 );
 
@@ -394,7 +417,7 @@ class sdGrub extends sdEntity
 		ctx.drawImageFilterCache( sdGrub.img_grub, xx * 32, yy * 32, 32,32, -16, -16, 32,32 );
 		
 		ctx.globalAlpha = 1;
-		ctx.filter = 'none';
+		//ctx.filter = 'none';
 	}
 
 	onRemove() // Class-specific, if needed

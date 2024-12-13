@@ -152,6 +152,17 @@ class sdBullet extends sdEntity
 		target_entity._contains_class = null;*/
 	}
 
+	RemoveBullet()
+	{
+		if ( sdWorld.is_server )
+		this.remove();
+		else
+		{
+			this.sx = 0;
+			this.sy = 0;
+			//this._client_side_hide_until = sdWorld.time + 100;
+		}
+	}
 	constructor( params )
 	{
 		super( params );
@@ -175,10 +186,13 @@ class sdBullet extends sdEntity
 
 		this._damage = 10;
 		this.time_left = 30;
+		
+		this._client_side_hide_until = 0;
 
 		this._return_damage_to_owner = false; // Stimpack and medikit
 		this._custom_target_reaction = null;
 		this._custom_target_reaction_protected = null;
+		this._custom_target_reaction_before_damage_tests = null; // Ignores protection, called always even for BSU and other kinds of protected entities
 		this._custom_detonation_logic = null;
 		this._custom_post_bounce_reaction = null;
 		this._custom_extra_think_logic = null;
@@ -188,6 +202,7 @@ class sdBullet extends sdEntity
 
 		this._rail = false;
 		this._rail_circled = false;
+		this._rail_alt = false;
 
 		this._affected_by_gravity = false; // Bullet drop?
 		this.gravity_scale = 1;
@@ -214,6 +229,8 @@ class sdBullet extends sdEntity
 
 		this._emp = false; // EMP effect, used for turrets to set them to "sleep mode"
 		this._emp_mult = 1; // How long will the turret sleep ( 1 = 5 seconds )
+		
+		//this._skip_crystals = false;
 
 		this._temperature_addition = 0; // Set enemies on fire?
 
@@ -245,6 +262,8 @@ class sdBullet extends sdEntity
 		this._homing_mult = 0; // How fast/strong does it home towards target?
 
 		this._first_frame = true; // Bad approach but early removal isn't good either. Also impossible to know if projectile is hook this early so far
+		
+		this._extra_filtering_method = null;
 
 		// Defining this in method that is not called on this object and passed as collision filtering thing
 		//this.BouncyCollisionFiltering = this.BouncyCollisionFiltering.bind( this ); Bad, snapshot will enumerate it
@@ -268,6 +287,9 @@ class sdBullet extends sdEntity
 
 		if ( this.color !== 'transparent' )
 		{
+			if ( this._rail_alt )
+			sdWorld.SendEffect({ x:this._start_x, y:this._start_y, x2:this.x, y2:this.y, type:sdEffect.TYPE_ALT_RAIL, color:this.color });
+			else
 			if ( this._rail_circled )
 			sdWorld.SendEffect({ x:this._start_x, y:this._start_y, x2:this.x, y2:this.y, type:sdEffect.TYPE_BEAM_CIRCLED, color:this.color });
 			else
@@ -439,6 +461,13 @@ class sdBullet extends sdEntity
 
 		if ( !from_entity.PrecieseHitDetection( this.x, this.y, this ) )
 		return false;
+	
+		//if ( this._skip_crystals )
+		//if ( from_entity.is( sdCrystal ) )
+		//return false;
+
+		if ( this._extra_filtering_method )
+		return this._extra_filtering_method( from_entity, this );
 
 		return true;
 	}
@@ -457,6 +486,9 @@ class sdBullet extends sdEntity
 		if ( this._owner2 === from_entity )
 		return false;
 
+		if ( this._extra_filtering_method )
+		return this._extra_filtering_method( from_entity, this );
+
 		return true;
 	}
 
@@ -472,22 +504,6 @@ class sdBullet extends sdEntity
 
 
 			this._first_frame = false;
-			/*if ( !this._hook && !this._admin_picker )
-			if ( !sdArea.CheckPointDamageAllowed( this.x, this.y ) )
-			{
-				if ( this._owner && this._owner._god )
-				{
-				}
-				else
-				if ( this._owner2 && this._owner2._god )
-				{
-				}
-				else
-				{
-					this.remove();
-					return;
-				}
-			}*/
 		}
 
 		let GSPEED_to_solve = GSPEED;
@@ -568,7 +584,8 @@ class sdBullet extends sdEntity
 						//if ( sdWorld.Dist2D_Vector( this.sx / vel2 - old_sx / vel, this.sy / vel2 - old_sy / vel ) > 0.8 )
 						if ( sdWorld.Dist2D_Vector_pow2( this.sx / vel2 - old_sx / vel, this.sy / vel2 - old_sy / vel ) > 0.8 * 0.8 )
 						{
-							this.remove();
+							this.RemoveBullet();
+						
 							return true;
 						}
 
@@ -578,7 +595,8 @@ class sdBullet extends sdEntity
 						if ( !sdWorld.is_server )
 						if ( sdWorld.last_hit_entity === null || !this.CanBounceOff( sdWorld.last_hit_entity ) )
 						{
-							this.remove();
+							this.RemoveBullet();
+						
 							return true;
 						}
 					}
@@ -588,7 +606,9 @@ class sdBullet extends sdEntity
 				{
 					if ( !this._wave )
 					sdWorld.SendEffect({ x:this.x, y:this.y, type:sdEffect.TYPE_WALL_HIT });
-					this.remove();
+				
+					this.RemoveBullet();
+				
 					return;
 				}
 			}
@@ -596,7 +616,8 @@ class sdBullet extends sdEntity
 			if ( this._custom_extra_think_logic )
 			if ( this._custom_extra_think_logic( this, GSPEED ) )
 			{
-				this.remove();
+				this.RemoveBullet();
+			
 				return;
 			}
 
@@ -609,7 +630,8 @@ class sdBullet extends sdEntity
 					//this._hook = false;
 				}
 
-				this.remove();
+				this.RemoveBullet();
+			
 				return;
 			}
 
@@ -704,33 +726,6 @@ class sdBullet extends sdEntity
 		{
 			if ( from_entity.is( sdGun ) )
 			return;
-			/*
-			if ( this._owner && this._owner._god )
-			{
-			}
-			else
-			if ( this._owner2 && this._owner2._god )
-			{
-			}
-			else
-			{
-				if ( from_entity.is( sdArea ) )
-				{
-					if ( from_entity.type === sdArea.TYPE_PREVENT_DAMAGE )
-					{
-						this.remove();
-						return;
-					}
-				}
-				else
-				{
-					if ( !sdArea.CheckPointDamageAllowed( from_entity.x + ( from_entity._hitbox_x1 + from_entity._hitbox_x2 ) / 2, from_entity.y + ( from_entity._hitbox_y1 + from_entity._hitbox_y2 ) / 2 ) )
-					{
-						this.remove();
-						return;
-					}
-				}
-			}*/
 		}
 
 		if ( this._custom_post_bounce_reaction )
@@ -738,6 +733,11 @@ class sdBullet extends sdEntity
 
 		if ( !this.RegularCollisionFiltering( from_entity ) )
 		return;
+	
+
+		if ( this._custom_target_reaction_before_damage_tests )
+		this._custom_target_reaction_before_damage_tests( this, from_entity );
+
 
 		if ( (
 				this._owner !== from_entity && ( !this._owner || !this._owner._owner || this._owner._owner !== from_entity ) &&
@@ -756,7 +756,7 @@ class sdBullet extends sdEntity
 					if ( sdWorld.is_server ) // Or else fake self-knock
 					{
 						let damaged = true;
-
+						
 						if ( this._damage !== 0 )
 						{
 							let limb_mult = from_entity.GetHitDamageMultiplier( this.x, this.y );
@@ -845,7 +845,8 @@ class sdBullet extends sdEntity
 					if ( this._detonate_on_impact )
 					if ( this._damage === 0 || !sdWorld.is_server )
 					{
-						this.remove();
+						this.RemoveBullet();
+					
 						return;
 					}
 				}
@@ -920,12 +921,8 @@ class sdBullet extends sdEntity
 								let limb_mult = from_entity.GetHitDamageMultiplier( this.x, this.y );
 
 								let critical_hit_mult = this.GetCriticalHitMult();
-
-								if ( !this._wave )
-								{
-									if ( !this._soft )
-									sdWorld.SendEffect({ x:this.x, y:this.y, type:( limb_mult === 1 ? from_entity.GetBleedEffect() : from_entity.GetBleedEffectDamageMultiplier() ) });
-								}
+								
+								let eff = ( limb_mult === 1 ? from_entity.GetBleedEffect() : from_entity.GetBleedEffectDamageMultiplier() );
 
 								let dmg = this._damage * critical_hit_mult;// * dmg_mult;
 
@@ -972,7 +969,9 @@ class sdBullet extends sdEntity
 								if ( this._detonate_on_impact )
 								if ( from_entity.is( sdLifeBox ) )
 								if ( this._bouncy && !this.is_grenade )
-								this.remove(); // Prevent falkonian PSI cutter oneshotting lifebox
+								{
+									this.RemoveBullet(); // Prevent falkonian PSI cutter oneshotting lifebox
+								}
 
 								if ( from_entity.is( sdBlock ) && (
 										from_entity.DoesRegenerate() ) ) // Dirt damage bonus multiplier (relative to initial damage)
@@ -1001,6 +1000,65 @@ class sdBullet extends sdEntity
 									if ( from_entity.is( sdCrystal ) )
 									if ( typeof this._owner._nature_damage !== 'undefined' )
 									this._owner._nature_damage += dmg;
+								}
+								
+								
+
+								if ( !this._wave )
+								{
+									if ( !this._soft )
+									{
+										let partial_damage = false;
+										
+										if ( dmg > 0 )
+										if ( old_hea - ( from_entity.hea || from_entity._hea || 0 ) < dmg * 0.99 )
+										partial_damage = true;
+										
+										if ( eff === sdEffect.TYPE_SHIELD || partial_damage )
+										{
+											let dist_x1 = Math.abs( from_entity.x + from_entity._hitbox_x1 - this.x );
+											let dist_x2 = Math.abs( from_entity.x + from_entity._hitbox_x2 - this.x );
+											let dist_y1 = Math.abs( from_entity.y + from_entity._hitbox_y1 - this.y );
+											let dist_y2 = Math.abs( from_entity.y + from_entity._hitbox_y2 - this.y );
+											
+											let xx = this.x;
+											let yy = this.y;
+											let r = 0;
+											
+											if ( Math.min( dist_x1, dist_x2 ) < Math.min( dist_y1, dist_y2 ) )
+											{
+												if ( dist_x1 < dist_x2 )
+												{
+													xx = from_entity.x + from_entity._hitbox_x1;
+													r = - Math.PI / 2;
+												}
+												else
+												{
+													xx = from_entity.x + from_entity._hitbox_x2;
+													r = Math.PI / 2;
+												}
+											}
+											else
+											{
+												if ( dist_y1 < dist_y2 )
+												yy = from_entity.y + from_entity._hitbox_y1;
+												else
+												yy = from_entity.y + from_entity._hitbox_y2;
+											}
+											
+											sdWorld.SendEffect({ 
+												x:xx, 
+												y:yy, 
+												type:sdEffect.TYPE_SHIELD,
+												rotation: r });
+										}
+										
+										if ( eff !== sdEffect.TYPE_SHIELD )
+										sdWorld.SendEffect({ 
+											x:this.x, 
+											y:this.y, 
+											type:eff });
+									}
 								}
 							}
 							else
@@ -1105,7 +1163,7 @@ class sdBullet extends sdEntity
 					{
 						//this._last_target = from_entity;
 
-						this.remove();
+						this.RemoveBullet();
 					}
 					return;
 				}
@@ -1116,24 +1174,71 @@ class sdBullet extends sdEntity
 	{
 		ctx.apply_shading = false;
 		
-		if ( this.model )
+		if ( this.sy !== 0 || this.sx !== 0 || this.is_grenade )
 		{
-			ctx.rotate( Math.atan2( this.sy, this.sx ) );
-
-			if ( !sdBullet.images[ this.model ] )
-			sdBullet.images[ this.model ] = sdWorld.CreateImageFromFile( this.model );
-
-			if ( this.model_size === 1 )
-			ctx.drawImageFilterCache( sdBullet.images[ this.model ], - 32, - 16, 64,32 ); // used for 64 by 32 sprites
-		
-			if ( this.model_size === 2 )
-			ctx.drawImageFilterCache( sdBullet.images[ this.model ], - 32, - 32, 64,64 ); // used for 64 by 64 sprites
-
-			if ( this.model_size === 3 )
-			ctx.drawImageFilterCache( sdBullet.images[ this.model ], - 48, - 48, 96,96 ); // used for 96 by 96 sprites
-
-			if ( this.model === 'bullet2' )
+			if ( this.model )
 			{
+				ctx.rotate( Math.atan2( this.sy, this.sx ) );
+
+				if ( !sdBullet.images[ this.model ] )
+				sdBullet.images[ this.model ] = sdWorld.CreateImageFromFile( this.model );
+
+				if ( this.model_size === 1 )
+				ctx.drawImageFilterCache( sdBullet.images[ this.model ], - 32, - 16, 64,32 ); // used for 64 by 32 sprites
+
+				if ( this.model_size === 2 )
+				ctx.drawImageFilterCache( sdBullet.images[ this.model ], - 32, - 32, 64,64 ); // used for 64 by 64 sprites
+
+				if ( this.model_size === 3 )
+				ctx.drawImageFilterCache( sdBullet.images[ this.model ], - 48, - 48, 96,96 ); // used for 96 by 96 sprites
+
+				if ( this.model === 'bullet2' )
+				{
+					if ( this._sd_tint_filter === null )
+					{
+						this._sd_tint_filter = sdWorld.hexToRgb( this.color );
+						if ( this._sd_tint_filter )
+						{
+							this._sd_tint_filter[ 0 ] /= 255;
+							this._sd_tint_filter[ 1 ] /= 255;
+							this._sd_tint_filter[ 2 ] /= 255;
+
+							this._sd_tint_filter[ 0 ] += 0.2;
+							this._sd_tint_filter[ 1 ] += 0.2;
+							this._sd_tint_filter[ 2 ] += 0.2;
+
+							this._sd_tint_filter[ 0 ] *= 1.5;
+							this._sd_tint_filter[ 1 ] *= 1.5;
+							this._sd_tint_filter[ 2 ] *= 1.5;
+						}
+					}
+					ctx.blend_mode = THREE.AdditiveBlending;
+					{
+						ctx.sd_tint_filter = this._sd_tint_filter;
+						let dist_travelled = sdWorld.Dist2D( this._start_x, this._start_y, this.x, this.y );
+						ctx.scale( 1 * dist_travelled / 32, 0.5 );
+						ctx.drawImageFilterCache( sdBullet.images[ this.model ], -32, - 16, 32, 32 );
+						ctx.sd_tint_filter = null;
+					}
+				}
+
+				if ( this.model !== 'bullet2' )
+				ctx.drawImageFilterCache( sdBullet.images[ this.model ], - 16, - 16, 32, 32 );
+
+				ctx.sd_tint_filter = null;
+				ctx.blend_mode = THREE.NormalBlending;
+			}
+			else
+			{
+
+				/*ctx.rotate( Math.atan2( this.sy, this.sx ) + Math.PI / 2 );
+
+				let vel = Math.sqrt( this.sx * this.sx + this.sy * this.sy ) * 0.7;
+
+				ctx.fillStyle = this.color;
+				ctx.globalAlpha = 1;
+				ctx.fillRect( -0.5, -vel/2, 1, vel );*/
+
 				if ( this._sd_tint_filter === null )
 				{
 					this._sd_tint_filter = sdWorld.hexToRgb( this.color );
@@ -1152,64 +1257,21 @@ class sdBullet extends sdEntity
 						this._sd_tint_filter[ 2 ] *= 1.5;
 					}
 				}
+
 				ctx.blend_mode = THREE.AdditiveBlending;
 				{
 					ctx.sd_tint_filter = this._sd_tint_filter;
-					let dist_travelled = sdWorld.Dist2D( this._start_x, this._start_y, this.x, this.y );
-					ctx.scale( 1 * dist_travelled / 32, 0.5 );
-					ctx.drawImageFilterCache( sdBullet.images[ this.model ], -32, - 16, 32, 32 );
+
+					ctx.rotate( Math.atan2( this.sy, this.sx ) );
+					ctx.scale( 0.5, 0.5 );
+					ctx.drawImageFilterCache( sdBullet.images[ 'bullet' ], - 22, - 5, 44,10 );
+
 					ctx.sd_tint_filter = null;
 				}
+				ctx.blend_mode = THREE.NormalBlending;
 			}
-
-			if ( this.model !== 'bullet2' )
-			ctx.drawImageFilterCache( sdBullet.images[ this.model ], - 16, - 16, 32, 32 );
-
-			ctx.sd_tint_filter = null;
-			ctx.blend_mode = THREE.NormalBlending;
 		}
-		else
-		{
-			/*ctx.rotate( Math.atan2( this.sy, this.sx ) + Math.PI / 2 );
-
-			let vel = Math.sqrt( this.sx * this.sx + this.sy * this.sy ) * 0.7;
-
-			ctx.fillStyle = this.color;
-			ctx.globalAlpha = 1;
-			ctx.fillRect( -0.5, -vel/2, 1, vel );*/
-
-			if ( this._sd_tint_filter === null )
-			{
-				this._sd_tint_filter = sdWorld.hexToRgb( this.color );
-				if ( this._sd_tint_filter )
-				{
-					this._sd_tint_filter[ 0 ] /= 255;
-					this._sd_tint_filter[ 1 ] /= 255;
-					this._sd_tint_filter[ 2 ] /= 255;
-
-					this._sd_tint_filter[ 0 ] += 0.2;
-					this._sd_tint_filter[ 1 ] += 0.2;
-					this._sd_tint_filter[ 2 ] += 0.2;
-
-					this._sd_tint_filter[ 0 ] *= 1.5;
-					this._sd_tint_filter[ 1 ] *= 1.5;
-					this._sd_tint_filter[ 2 ] *= 1.5;
-				}
-			}
-
-			ctx.blend_mode = THREE.AdditiveBlending;
-			{
-				ctx.sd_tint_filter = this._sd_tint_filter;
-
-				ctx.rotate( Math.atan2( this.sy, this.sx ) );
-				ctx.scale( 0.5, 0.5 );
-				ctx.drawImageFilterCache( sdBullet.images[ 'bullet' ], - 22, - 5, 44,10 );
-
-				ctx.sd_tint_filter = null;
-			}
-			ctx.blend_mode = THREE.NormalBlending;
-		}
-
+		
 		//ctx.apply_shading = true;
 	}
 }

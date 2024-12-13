@@ -9,6 +9,7 @@ import sdWater from './sdWater.js';
 import sdCom from './sdCom.js';
 import sdBlock from './sdBlock.js';
 import sdBullet from './sdBullet.js';
+import sdStorage from './sdStorage.js';
 import sdCube from './sdCube.js';
 import sdCharacter from './sdCharacter.js';
 import sdSpider from './sdSpider.js';
@@ -45,6 +46,7 @@ class sdDrone extends sdEntity
 		sdDrone.img_zektaron_drone3 = sdWorld.CreateImageFromFile( 'zektaron_drone3' ); // By LordBored
 
 		sdDrone.img_drone_council = sdWorld.CreateImageFromFile( 'drone_council_sprite' );
+		sdDrone.img_drone_council2 = sdWorld.CreateImageFromFile( 'drone_council_sprite2' );
 		sdDrone.img_drone_setr = sdWorld.CreateImageFromFile( 'drone_setr_sprite' );
 
 		sdDrone.img_drone_tzyrg = sdWorld.CreateImageFromFile( 'drone_tzyrg_sprite' ); // By floor/flora/Gravel
@@ -78,6 +80,7 @@ class sdDrone extends sdEntity
 		sdDrone.DRONE_ZEKTARON_CORVETTE = 15;
 		sdDrone.DRONE_ZEKTARON_HUNTER = 16;
 		sdDrone.DRONE_SD_BG = 17;
+		sdDrone.DRONE_COUNCIL_ATTACK = 18;
 		
 		sdWorld.entity_classes[ this.name ] = this; // Register for object spawn
 	}
@@ -119,25 +122,26 @@ class sdDrone extends sdEntity
 		this.type = params.type || 1;
 		
 		this._hmax = 
-			this.type === sdDrone.DRONE_SETR ? 150 : 
-			this.type === sdDrone.DRONE_COUNCIL ? 200 : 
+			this.type === sdDrone.DRONE_SETR ? 120 : 
+			this.type === sdDrone.DRONE_COUNCIL ? 180 : 
 			this.type === sdDrone.DRONE_SARRONIAN_DETONATOR ? 100 : 
-			this.type === sdDrone.DRONE_SARRONIAN_DETONATOR_CARRIER ? 900 : 
-			this.type === sdDrone.DRONE_SARRONIAN ? 600 :
+			this.type === sdDrone.DRONE_SARRONIAN_DETONATOR_CARRIER ? 800 : 
+			this.type === sdDrone.DRONE_SARRONIAN ? 550 :
 			this.type === sdDrone.DRONE_SARRONIAN_REPAIR_DRONE ? 200 :
-			this.type === sdDrone.DRONE_SARRONIAN_GAUSS ? 800 :
+			this.type === sdDrone.DRONE_SARRONIAN_GAUSS ? 650 :
 			this.type === sdDrone.DRONE_ZEKTARON ? 170 :
-			this.type === sdDrone.DRONE_ZEKTARON_CORVETTE ? 900 :
-			this.type === sdDrone.DRONE_ZEKTARON_HUNTER ? 800 :
+			this.type === sdDrone.DRONE_ZEKTARON_CORVETTE ? 500 :
+			this.type === sdDrone.DRONE_ZEKTARON_HUNTER ? 500 :
 			this.type === sdDrone.DRONE_TZYRG_WATCHER ? 500 : 
 			this.type === sdDrone.DRONE_FALKOK ? 130 : 
-			this.type === sdDrone.DRONE_FALKOK_RAIL ? 350 : 
-			this.type === sdDrone.DRONE_CUT_DROID ? 2000 : 
+			this.type === sdDrone.DRONE_FALKOK_RAIL ? 320 : 
+			this.type === sdDrone.DRONE_CUT_DROID ? 1200 : 
 			this.type === sdDrone.DRONE_SD_BG ? 2000 : 
+			this.type === sdDrone.DRONE_COUNCIL_ATTACK ? 150 : 
 			100; // TYPE=1: 1 shot for regular railgun but 2 for mech one, TYPE=2: 1 shot from any railgun
 	
 		this._hea = this._hmax;
-		this._ai_team = params._ai_team || 0;
+		this._ai_team = params._ai_team || this.GetDroneTeam();
 		
 		if ( this.type === sdDrone.DRONE_CUT_DROID )
 		this._ai_team = -1; // Not affiliated with any faction
@@ -145,8 +149,22 @@ class sdDrone extends sdEntity
 		this.attack_an = 0;
 		this.death_anim = 0;
 		
-		this._current_target = null;
+		// Targetting
+		this._current_target = null;//params.target || null;
 		this._pathfinding = null;
+		
+		// Aiming
+		this._look_x = this.x;
+		this._look_y = this.y;
+		
+		//if ( this._current_target ) 
+		this.SetTarget( params.target || null ); 
+	
+		this._consumed_entity_snapshots = null; // SD-BG can take crystals and give them to players
+		if ( this.type === sdDrone.DRONE_SD_BG )
+		this._consumed_entity_snapshots = [];
+	
+		//
 		
 		this.hurt_timer = 0;
 
@@ -189,6 +207,8 @@ class sdDrone extends sdEntity
 		
 		this._voice_channel = sdSound.CreateSoundChannel( this );
 		
+		this._unlimited_range = params.unlimited_range || false; // Unlimited attack range? Reserved for some "protect entity" events.
+		
 		sdDrone.drones.push( this );
 		
 		this.SetMethod( 'CollisionFiltering', this.CollisionFiltering ); // Here it used for "this" binding so method can be passed to collision logic
@@ -206,6 +226,7 @@ class sdDrone extends sdEntity
 	ExtraSerialzableFieldTest( prop )
 	{
 		if ( prop === '_is_minion_of' ) return true;
+		if ( prop === '_consumed_entity_snapshots' ) return true;
 
 		return false;
 	}
@@ -242,8 +263,8 @@ class sdDrone extends sdEntity
 				return false;
 				else
 				{
-				this._current_target === ent;
-				return true;
+					this._current_target === ent;
+					return true;
 				}
 			}
 		}
@@ -262,7 +283,95 @@ class sdDrone extends sdEntity
 				}
 			}
 		}
+	}
+	CrystalCollectionLogic( from_entity )
+	{
+		if ( sdWorld.is_server )
+		if ( this.type === sdDrone.DRONE_SD_BG )
+		if ( this._attack_timer <= 0 )
+		if ( from_entity.is( sdCrystal ) )
+		if ( this._consumed_entity_snapshots )
+		if ( this._consumed_entity_snapshots.length < 4 )
+		{
+			this._consumed_entity_snapshots.push( from_entity.GetSnapshot( globalThis.GetFrame(), true ) );
+			from_entity.remove();
+			from_entity._broken = false;
 
+			sdSound.PlaySound({ name:'gun_anti_rifle_hit', x:this.x, y:this.y, volume:0.5, pitch:0.3 });
+
+			this._attack_timer = 30;
+		}
+	}
+	onMovementInRange( from_entity )
+	{
+		this.CrystalCollectionLogic( from_entity );
+	}
+	SyncedToPlayer( character ) // Shortcut for enemies to react to players
+	{
+		if ( character._ai_team === this._ai_team )
+		{
+			if ( this._consumed_entity_snapshots )
+			if ( this._consumed_entity_snapshots.length > 0 )
+			if ( this._attack_timer <= 0 )
+			{
+				let dx = character.x - this.x;
+				let dy = character.y - this.y;
+				
+				if ( sdWorld.inDist2D_Boolean( 0,0, dx,dy, 80 ) )
+				{
+					this._attack_timer = 30;
+					
+					let snapshot = this._consumed_entity_snapshots.pop();
+					try
+					{
+						let ent = sdEntity.GetObjectFromSnapshot( snapshot );
+
+						if ( Math.abs( dx ) > Math.abs( dy ) )
+						{
+							if ( dx > 0 )
+							ent.x = this.x + this._hitbox_x2 - ent._hitbox_x1;
+							else
+							ent.x = this.x + this._hitbox_x1 - ent._hitbox_x2;
+
+							ent.y = this.y;
+						}
+						else
+						{
+							if ( dy > 0 )
+							ent.y = this.y + this._hitbox_y2 - ent._hitbox_y1;
+							else
+							ent.y = this.y + this._hitbox_y1 - ent._hitbox_y2;
+
+							ent.x = this.x;
+						}
+						
+						dx = character.x - ent.x;
+						dy = character.y - ent.y;
+						
+						ent.sx = dx * 0.05 + this.sx;
+						ent.sy = dy * 0.05 + this.sy - Math.abs( dx ) * 0.05;
+						sdEntity.entities.push( ent );
+
+						sdWorld.UpdateHashPosition( ent, false ); // Important! Prevents memory leaks and hash tree bugs
+						
+						if ( !ent.CanMoveWithoutOverlap( ent.x, ent.y ) )
+						{
+							ent.remove();
+							ent._broken = false;
+							this._consumed_entity_snapshots.unshift( snapshot );
+						}
+						else
+						{
+							sdSound.PlaySound({ name:'gun_anti_rifle_hit', x:this.x, y:this.y, volume:0.5, pitch:0.35 });
+						}
+					}
+					catch ( e )
+					{
+						trace( 'Drone can\'t drop crystal', snapshot );
+					}
+				}
+			}
+		}
 	}
 	/*SyncedToPlayer( character ) // Shortcut for enemies to react to players
 	{
@@ -294,15 +403,44 @@ class sdDrone extends sdEntity
 		}
 	}*/
 	
+	GetDroneTeam(){
+		if ( this.type === sdDrone.DRONE_SD_BG )
+		return 0;
+		
+		if ( this.type === sdDrone.DRONE_FALKOK || this.type === sdDrone.DRONE_FALKOK_RAIL )
+		return 1;
+		
+		if ( this.type === sdDrone.DRONE_ERTHAL )
+		return 2;
+	
+		if ( this.type === sdDrone.DRONE_COUNCIL || this.type === sdDrone.DRONE_COUNCIL_ATTACK )
+		return 3;
+	
+		if ( this.type === sdDrone.DRONE_SARRONIAN || this.type === sdDrone.DRONE_SARRONIAN_DETONATOR || this.type === sdDrone.DRONE_SARRONIAN_DETONATOR_CARRIER || this.type === sdDrone.DRONE_SARRONIAN_GAUSS || this.type === sdDrone.DRONE_SARRONIAN_REPAIR_DRONE )
+		return 4;
+	
+		if ( this.type === sdDrone.DRONE_ZEKTARON || this.type === sdDrone.DRONE_ZEKTARON_CORVETTE || this.type === sdDrone.DRONE_ZEKTARON_HUNTER )
+		return 4;
+	
+		if ( this.type === sdDrone.DRONE_SETR )
+		return 7;
+	
+		if ( this.type === sdDrone.DRONE_TZYRG || this.type === sdDrone.DRONE_TZYRG_WATCHER )
+		return 8;
+		
+		return -1;
+	}
+	
 	GetRandomTarget()
 	{
 		let ent = sdEntity.GetRandomActiveEntity();
 		let array_of_enemies = sdCom.com_faction_attack_classes;
+		if ( ent )
 		if ( array_of_enemies.indexOf( ent.GetClass() ) !== -1 ) // If line of sight check found a potential target class inside that array
 			{
 				if ( typeof ent._ai_team !== 'undefined' ) // Does a potential target belong to a faction?
 				{
-					if ( ent._ai_team !== this._ai_team && sdWorld.Dist2D( this.x, this.y, ent.x, ent.y ) < sdDrone.max_seek_range ) // Is this not a friendly faction? And is this close enough?
+					if ( ent._ai_team !== this._ai_team && ( sdWorld.Dist2D( this.x, this.y, ent.x, ent.y ) < sdDrone.max_seek_range || this._unlimited_range ) ) // Is this not a friendly faction? And is this close enough?
 					return ent; // Target it
 				}
 				else
@@ -429,7 +567,8 @@ class sdDrone extends sdEntity
 			}
 	
 			if ( this.type === sdDrone.DRONE_FALKOK || this.type === sdDrone.DRONE_COUNCIL || this.type === sdDrone.DRONE_SETR || 
-				 this.type === sdDrone.DRONE_TZYRG || this.type === sdDrone.DRONE_TZYRG_WATCHER || this.type === sdDrone.DRONE_FALKOK_RAIL || this.type === sdDrone.DRONE_SD_BG )
+				 this.type === sdDrone.DRONE_TZYRG || this.type === sdDrone.DRONE_TZYRG_WATCHER || this.type === sdDrone.DRONE_FALKOK_RAIL || this.type === sdDrone.DRONE_SD_BG ||
+				 this.type === sdDrone.DRONE_COUNCIL_ATTACK )
 			{
 				let explosion_color = sdEffect.default_explosion_color;
 				
@@ -610,7 +749,7 @@ class sdDrone extends sdEntity
 				}, 100 );
 			}
 
-			if ( Math.random() < 0.3 ) // 30% chance to drop a metal shard on destruction
+			if ( ( Math.random() < 0.3 && this.type !== sdDrone.DRONE_COUNCIL_ATTACK ) || ( Math.random() < 0.2 && this.type === sdDrone.DRONE_COUNCIL_ATTACK ) ) // 30% chance to drop a metal shard on destruction, 20% if Council assault drone
 			{
 				setTimeout(()=>{ // Hacky, without this gun does not appear to be pickable or interactable...
 
@@ -794,7 +933,7 @@ class sdDrone extends sdEntity
 			
 			if ( this._current_target )
 			{
-				if ( this._current_target._is_being_removed || !this._current_target.IsVisible( this ) || sdWorld.Dist2D( this.x, this.y, this._current_target.x, this._current_target.y ) > sdDrone.max_seek_range + 32 )
+				if ( this._current_target._is_being_removed || !this._current_target.IsVisible( this ) || ( sdWorld.Dist2D( this.x, this.y, this._current_target.x, this._current_target.y ) > sdDrone.max_seek_range + 32 && !this._unlimited_range ) )
 				{
 					//this._current_target = null;
 					this.SetTarget( null );
@@ -802,7 +941,7 @@ class sdDrone extends sdEntity
 				else
 				{
 					if ( this.attack_frame < 1 ) // Not attacking
-					this.side = ( this._current_target.x > this.x ) ? 1 : -1;
+					this.side = ( this._look_x > this.x ) ? 1 : -1;
 
 					if ( this._last_jump < sdWorld.time - 200 )
 					//if ( this._last_stand_on )
@@ -816,7 +955,7 @@ class sdDrone extends sdEntity
 						let dx = 0;
 						let dy = 0;
 						
-						if ( pathfinding_result && pathfinding_result.attack_target === this._current_target )
+						if ( ( pathfinding_result && pathfinding_result.attack_target === this._current_target ) || this._unlimited_range )
 						{
 							dx = ( this._current_target.x + ( this._current_target.sx || 0 ) * 10 - this.x - this.sx * 10 );
 							dy = ( this._current_target.y + ( this._current_target.sy || 0 ) * 10 - this.y - this.sy * 10 );
@@ -888,6 +1027,7 @@ class sdDrone extends sdEntity
 
 						this.sx += dx;
 						this.sy += dy;
+						
 
 						//if ( sdWorld.Dist2D_Vector( this.sx, this.sy ) > 6 )
 						//console.log( sdWorld.Dist2D_Vector( this.sx, this.sy ) );
@@ -976,12 +1116,18 @@ class sdDrone extends sdEntity
 
 			if ( this.attack_frame > 0 )
 			this.attack_frame = Math.max( 0, this.attack_frame - GSPEED * 0.1 );
-			else
+			//else
+				
+			// Drones now "aim" at entities
 			if ( sdWorld.is_server )
 			if ( this._current_target )
 			{
-				let dx = this._current_target.x - this.x;
-				let dy = this._current_target.y - this.y;
+				// Target aiming so players can dodge // Alternative aiming logic is used for attacking objects in a way
+				this._look_x = sdWorld.MorphWithTimeScale( this._look_x, this._current_target.x + ( ( this._current_target._hitbox_x1 + this._current_target._hitbox_x2 ) / 2 ), 0.95, GSPEED );
+				this._look_y = sdWorld.MorphWithTimeScale( this._look_y, this._current_target.y + ( ( this._current_target._hitbox_y1 + this._current_target._hitbox_y2 ) / 2 ), 0.95, GSPEED );
+				
+				let dx = this._look_x - this.x;
+				let dy = this._look_y - this.y;
 				if ( this.type !== 6 )
 				this.attack_an = ( Math.atan2( -dy, Math.abs( dx ) ) ) * 1000;
 			}
@@ -1039,7 +1185,7 @@ class sdDrone extends sdEntity
 				{
 					this._last_attack = sdWorld.time; // So it is not so much calc intensive
 
-					let nears_raw = sdWorld.GetAnythingNear( this.x, this.y, 240, null, sdCom.com_faction_attack_classes );
+					/*let nears_raw = sdWorld.GetAnythingNear( this.x, this.y, 240, null, sdCom.com_faction_attack_classes );
 					let from_entity;
 
 					let nears = [];
@@ -1100,19 +1246,50 @@ class sdDrone extends sdEntity
 
 					//let hits_left = 4;
 					
+					*/
+					
+					let nears = [];
+					let from_entity;
+					if ( this._current_target )
+					nears.push( { ent: this._current_target, rank: Math.random() * 0.1, ignore_line_of_sight: false } ); // It attacks only one target now
+				
 					if ( pathfinding_result && pathfinding_result.attack_target )
 					{
+						let attack = true;
+						
+						if ( this._ai_team === 0 ) // Star Defenders-friendly
+						{
+							if ( pathfinding_result.attack_target.is( sdCrystal ) ||
+								 pathfinding_result.attack_target.is( sdStorage ) || 
+								 ( pathfinding_result.attack_target.is( sdCharacter ) && pathfinding_result.attack_target._my_hash ) )
+							{
+								// Friendly drones that kill new players are a kind of fun we can't to afford
+								attack = false;
+								
+								this.CrystalCollectionLogic( pathfinding_result.attack_target );
+							}
+						}
+						
+						if ( attack )
 						nears.push( { ent: pathfinding_result.attack_target, rank: 0, ignore_line_of_sight: true } ); // Not a priority usually
 					}
 
 					for ( var i = 0; i < nears.length; i++ )
 					{
 						from_entity = nears[ i ].ent;
+						
+						if ( pathfinding_result )
+						if ( from_entity === pathfinding_result.attack_target )
+						{
+							this._look_x = from_entity.x + ( from_entity._hitbox_x1 + from_entity._hitbox_x2 ) / 2;
+							this._look_y = from_entity.y + ( from_entity._hitbox_y1 + from_entity._hitbox_y2 ) / 2;
+						}
 
-						let xx = from_entity.x + ( from_entity._hitbox_x1 + from_entity._hitbox_x2 ) / 2;
-						let yy = from_entity.y + ( from_entity._hitbox_y1 + from_entity._hitbox_y2 ) / 2;
+						let xx = this._look_x;
+						let yy = this._look_y;
 
-						if ( nears[ i ].ignore_line_of_sight || sdWorld.CheckLineOfSight( this.x, this.y, xx, yy, from_entity, null, sdCom.com_creature_attack_unignored_classes ) )
+						let in_attack_range = ( sdWorld.Dist2D( this.x, this.y, from_entity.x, from_entity.y ) < 240 ) ? true : false;
+						if ( ( nears[ i ].ignore_line_of_sight || sdWorld.CheckLineOfSight( this.x, this.y, xx, yy, from_entity, null, sdCom.com_creature_attack_unignored_classes ) ) && in_attack_range )
 						{
 							let dx = xx - this.x;
 							let dy = yy - this.y;
@@ -1131,13 +1308,13 @@ class sdDrone extends sdEntity
 							}
 
 							this.side = ( dx > 0 ) ? 1 : -1;
-							if ( this.type !== 6 )
+							if ( this.type !== sdDrone.DRONE_COUNCIL )
 							this.attack_an = ( Math.atan2( -dy, Math.abs( dx ) ) ) * 1000;
 
 							//this.an = Math.atan2( this._target.y + this._target.sy * di / vel - this.y, this._target.x + this._target.sx * di / vel - this.x ) * 100;
 
 							//sdSound.PlaySound({ name:'crystal2', x:this.x, y:this.y, volume:0.33, pitch:2.8 });
-							if ( this.type === sdDrone.DRONE_FALKOK  ) // Falkok drones
+							if ( this.type === sdDrone.DRONE_FALKOK ) // Falkok drones
 							{
 								let bullet_obj = new sdBullet({ x: this.x, y: this.y });
 
@@ -1161,10 +1338,11 @@ class sdDrone extends sdEntity
 								//this.attack_an = ( Math.atan2( -dy, Math.abs( dx ) ) ) * 1000;
 								this._attack_timer = 7;
 
-								sdSound.PlaySound({ name:'gun_pistol', x:this.x, y:this.y, volume:0.33, pitch:5 });
+								//sdSound.PlaySound({ name:'gun_pistol', x:this.x, y:this.y, volume:0.33, pitch:5 });
+								sdSound.PlaySound({ name:'falkok_drone_fire', x:this.x, y:this.y, volume:1.5, pitch:1 });
 							}
 							else
-							if ( this.type === sdDrone.DRONE_ERTHAL  ) // Erthal drones
+							if ( this.type === sdDrone.DRONE_ERTHAL ) // Erthal drones
 							{
 								let bullet_obj = new sdBullet({ x: this.x, y: this.y });
 
@@ -1324,8 +1502,8 @@ class sdDrone extends sdEntity
 														}
 													}
 												}
-											}
-									}
+											};
+									};
 									sdEntity.entities.push( obj );
 									this._alt_attack_timer = 240;
 									this._attack_timer = 30;
@@ -1365,13 +1543,13 @@ class sdDrone extends sdEntity
 								let att_anim = false;
 								for ( let i = 0; i < entities.length; i++ )
 								{
-									if ( entities[ i ].GetClass() === 'sdCharacter' && ( this._attack_timer <= 0 ) ) // Is it a character?
+									if ( entities[ i ].is( sdCharacter ) && ( this._attack_timer <= 0 ) ) // Is it a character?
 									{
 										if ( entities[ i ]._ai_team === 4 ) // Does it belong to Sarronian faction?
 										{
 											if ( entities[ i ].hea < entities[ i ].hmax ) // Is it missing health?
 											{
-												if ( entities[ i ].GetClass() === 'sdCharacter' && !entities[ i ].hea <= 1 ) // Don't target dead allies.
+												if ( entities[ i ].is( sdCharacter ) && !entities[ i ].hea <= 1 ) // Don't target dead allies.
 												entities[ i ].hea = Math.min( entities[ i ].hea + 40, entities[ i ].hmax ); // If humanoid heal for 40
 
 												att_anim = true;
@@ -1605,7 +1783,7 @@ class sdDrone extends sdEntity
 								let att_anim = false;
 								for ( let i = 0; i < entities.length; i++ )
 								{
-									if ( entities[ i ].GetClass() === 'sdCharacter' ) // Is it a character?
+									if ( entities[ i ].is( sdCharacter ) ) // Is it a character?
 									{
 										if ( entities[ i ]._ai_team === 3 ) // Does it belong to Council faction?
 										{
@@ -1662,7 +1840,7 @@ class sdDrone extends sdEntity
 							}
 							else
 							if ( this.type === sdDrone.DRONE_SETR && // Setr drones
-								 sdWorld.Dist2D( this.x, this.y, this._current_target.x, this._current_target.y ) < 128 )
+								 sdWorld.Dist2D( this.x, this.y, from_entity.x, from_entity.y ) < 128 )
 							{
 								let bullet_obj = new sdBullet({ x: this.x, y: this.y });
 
@@ -1844,6 +2022,36 @@ class sdDrone extends sdEntity
 								//IsCuttingHook() cuts the hook
 							}
 							else
+							if ( this.type === sdDrone.DRONE_COUNCIL_ATTACK ) // Council assault drone
+							{
+								let bullet_obj = new sdBullet({ x: this.x, y: this.y });
+
+								bullet_obj._owner = this;
+
+								bullet_obj.sx = dx;
+								bullet_obj.sy = dy;
+								bullet_obj.x += bullet_obj.sx * 3;
+								bullet_obj.y += bullet_obj.sy * 3;
+
+								bullet_obj.sx *= 12;
+								bullet_obj.sy *= 12;
+
+								bullet_obj._damage = 24;
+								bullet_obj.color = '#ffff00';
+								bullet_obj._rail = true;
+								bullet_obj._rail_alt = true;
+								bullet_obj._temperature = 100;
+
+
+								sdEntity.entities.push( bullet_obj );
+
+								this.attack_frame = 2;
+								//this.attack_an = ( Math.atan2( -dy, Math.abs( dx ) ) ) * 1000;
+								this._attack_timer = 13;
+
+								sdSound.PlaySound({ name:'cube_attack', pitch: 4, x:this.x, y:this.y, volume:1.2 });
+							}
+							else
 							{
 								// Drone type has undefined behavior or too far from one of targets. We should skip the target as it can not be damaged
 								continue
@@ -1911,6 +2119,8 @@ class sdDrone extends sdEntity
 		return "Cut droid";
 		if ( this.type === sdDrone.DRONE_SD_BG )
 		return "SD-BG Drone";
+		if ( this.type === sdDrone.DRONE_COUNCIL_ATTACK )
+		return "Council Assault Drone";
 	
 		return 'Drone';
 	}
@@ -2008,6 +2218,9 @@ class sdDrone extends sdEntity
 
 		if ( this.type === sdDrone.DRONE_COUNCIL )
 		image = sdDrone.img_drone_council;
+	
+		if ( this.type === sdDrone.DRONE_COUNCIL_ATTACK )
+		image = sdDrone.img_drone_council2;
 
 		if ( this.type === sdDrone.DRONE_SETR )
 		image = sdDrone.img_drone_setr;
@@ -2045,7 +2258,7 @@ class sdDrone extends sdEntity
 				let x0;
 				let y0;
 			
-				let r = 15 + Math.sin( (sdWorld.time+this._anim_shift) / 1000 * Math.PI * 2 ) * 2;
+				let r = 15 + Math.sin( ( sdWorld.time + ( sdShop.isDrawing ? 0 : this._anim_shift ) ) / 1000 * Math.PI * 2 ) * 2;
 				
 				let morph = this._anim_flap;//Math.min( 1, timer / 30, ( 2.3 * 30 - timer ) / 30 );
 				r = 64 * morph + r * ( 1 - morph );

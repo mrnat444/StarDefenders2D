@@ -170,6 +170,7 @@ class sdCouncilIncinerator extends sdEntity
 		
 		let e = sdEntity.GetRandomEntity();
 		
+		if ( e )
 		if ( sdCom.com_faction_attack_classes.indexOf( e.GetClass() ) !== -1 || e.is( sdBaseShieldingUnit ) ) // It should also attack bases
 		if ( e.IsVisible( this ) )
 		if ( e.IsTargetable( this ) )
@@ -181,17 +182,39 @@ class sdCouncilIncinerator extends sdEntity
 	}
 	IsEnemy( target )
 	{
+		// Trying to stop it from destroying whole ground within the area
+		if ( target.is( sdBlock ) )
+		{
+			if ( !target._natural )
+			{
+				return true;
+			}
+			
+			// Allow attacking dirt in between target and this boss
+			if ( this._current_target )
+			if ( this._current_target.IsPlayerClass() )
+			{
+				if ( sdWorld.inDist2D_Boolean( ( this.x + this._current_target.x ) / 2, ( this.y + this._current_target.y ) / 2, target.x+target.width/2, target.y+target.height/2, sdWorld.Dist2D( this.x, this.y, this._current_target.x, this._current_target.y ) / 2 ) )
+				{
+					return true;
+				}
+			}
+		}
+		
 		if ( target.GetClass() !== 'sdCharacter' && target.GetClass() !== 'sdDrone' &&
-		target.GetClass() !== 'sdJunk' && target.GetClass() !== 'sdSandWorm' &&
-		target.GetClass() !== 'sdCouncilMachine' && target.GetClass() !== 'sdCouncilIncinerator' )
+			 target.GetClass() !== 'sdJunk' && target.GetClass() !== 'sdSandWorm' &&
+			 target.GetClass() !== 'sdCouncilMachine' && target.GetClass() !== 'sdCouncilIncinerator' )
 		return true;
 		else
 		{
 			if ( target.GetClass() === 'sdCharacter' || target.GetClass() === 'sdDrone' )
 			if ( target._ai_team !== this._ai_team )
 			return true;
-			if ( target.GetClass() === 'sdSandWorm' ) // TODO : add AI team to council worm without breaking regular worms
-			return true;
+			if ( target.GetClass() === 'sdSandWorm' )
+			{				// TODO : add AI team to council worm without breaking regular worms
+				if ( target.kind !== 3 ) // This should do it?
+				return true;
+			}
 		
 			if ( target.GetClass() === 'sdJunk' )
 			if ( target.type !== sdJunk.TYPE_COUNCIL_BOMB )
@@ -268,6 +291,9 @@ class sdCouncilIncinerator extends sdEntity
 		}
 
 		dmg = Math.abs( dmg );
+		
+		if ( this.incinerator_attack_anim > 0 )
+		dmg = dmg * 2; // 2x damage recieved while in ignition phase
 		
 		let old_hp = this.hea;
 		
@@ -393,7 +419,7 @@ class sdCouncilIncinerator extends sdEntity
 					let r = Math.random();
 					let shards = 2 + Math.round( Math.random() * 3 );
 			
-					if ( r < 0.075 ) // 7.5% chance
+					if ( r < 0.1 ) // 10% chance
 					{
 						let x = this.x;
 						let y = this.y;
@@ -419,6 +445,34 @@ class sdCouncilIncinerator extends sdEntity
 
 						}, 500 );
 					}
+					r = Math.random(); // Reroll RNG
+					if ( r < 0.02 ) // 2% chance to drop Exalted core
+					{
+						let x = this.x;
+						let y = this.y;
+						let sx = this.sx;
+						let sy = this.sy;
+
+						setTimeout(()=>{ // Hacky, without this gun does not appear to be pickable or interactable...
+
+							let random_value = Math.random();
+
+							let gun;
+
+							//if ( random_value < 0.45 )
+							//gun = new sdGun({ x:x, y:y, class:sdGun.CLASS_BUILDTOOL_UPG });
+							//else
+							{
+								gun = new sdGun({ x:x, y:y, class:sdGun.CLASS_EXALTED_CORE });
+							}
+
+							gun.sx = sx;
+							gun.sy = sy;
+							sdEntity.entities.push( gun );
+
+						}, 500 );
+					}
+					
 					while ( shards > 0 )
 					{
 						let x = this.x;
@@ -759,7 +813,7 @@ class sdCouncilIncinerator extends sdEntity
 
 
 							//sdSound.PlaySound({ name:'gun_rocket', x:this.x, y:this.y, volume:1, pitch:0.5 });
-							sdSound.PlaySound({ name:'cube_attack', x:this.x, y:this.y, volume:2, pitch: 1.5 });
+							sdSound.PlaySound({ name:'cube_attack', x:this.x, y:this.y, volume:1, pitch: 1.5 });
 
 							break;
 						}
@@ -806,7 +860,7 @@ class sdCouncilIncinerator extends sdEntity
 
 
 							//sdSound.PlaySound({ name:'gun_rocket', x:this.x, y:this.y, volume:1, pitch:0.5 });
-							sdSound.PlaySound({ name:'cube_attack', x:this.x, y:this.y, volume:2, pitch: 1.5 });
+							sdSound.PlaySound({ name:'cube_attack', x:this.x, y:this.y, volume:1, pitch: 1.5 });
 
 							break;
 						}

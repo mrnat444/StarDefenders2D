@@ -73,6 +73,7 @@ import WorkerServiceLogic from './game/server/worker_service_logic.js';
 globalThis.WorkerServiceLogic = WorkerServiceLogic;
 
 const SOCKET_IO_MODE = ( typeof Server !== 'undefined' ); // In else case geckos.io
+globalThis.SOCKET_IO_MODE = SOCKET_IO_MODE;
 
 
 const httpServer = http.createServer( app );
@@ -272,7 +273,12 @@ import sdWorld from './game/sdWorld.js';
 
 import FakeCanvasContext from './game/libs/FakeCanvasContext.js'; // consts
 globalThis.FakeCanvasContext = FakeCanvasContext;
-globalThis.sdRenderer = { visual_settings: 4 }; // Fake object
+
+
+import sdRenderer from './game/client/sdRenderer.js';
+//globalThis.sdRenderer = { visual_settings: 4 }; // Fake object. Bad, because sdBlock-s will see a real module, and won't know about this altering whenever mimic logic is applied
+sdRenderer.visual_settings = 4;
+globalThis.sdRenderer = sdRenderer;
 
 
 import sdEntity from './game/entities/sdEntity.js';
@@ -314,7 +320,10 @@ import sdModeration from './game/server/sdModeration.js';
 import sdDictionaryWords from './game/server/sdDictionaryWords.js';
 import sdDatabase from './game/server/sdDatabase.js';
 import sdMemoryLeakSeeker from './game/server/sdMemoryLeakSeeker.js';
+import sdByteShifter from './game/server/sdByteShifter.js';
 import { sdServerConfigShort, sdServerConfigFull } from './game/server/sdServerConfig.js';
+
+globalThis.sdByteShifter = sdByteShifter;
 
 import sdSandWorm from './game/entities/sdSandWorm.js';
 import sdGrass from './game/entities/sdGrass.js';
@@ -421,6 +430,7 @@ import LZUTF8 from './game/server/LZUTF8.js';
 import sdSnapPack from './game/server/sdSnapPack.js';
 import sdShop from './game/client/sdShop.js';
 import sdSound from './game/sdSound.js';
+import sdKeyStates from './game/sdKeyStates.js';
 
 
 console.warn = console.trace; // Adding stack trace support for console.warn, which it doesn't have by default for some reason in Node.JS
@@ -536,6 +546,7 @@ LZW.init_class();
 sdSound.init_class();
 sdDictionaryWords.init_class();
 
+globalThis.LZW = LZW;
 globalThis.sdWorld = sdWorld;
 globalThis.sdShop = sdShop;
 globalThis.sdModeration = sdModeration;
@@ -1038,7 +1049,7 @@ if ( directory_to_save_player_count !== null )
 {
 	setInterval( ()=>{
 		
-		fs.writeFile( directory_to_save_player_count, sdWorld.sockets.length+'', ( err )=>
+		fs.writeFile( directory_to_save_player_count, sdWorld.GetPlayingPlayersCount()+'/'+sdWorld.sockets.length+'', ( err )=>
 		{
 			
 		});
@@ -1116,6 +1127,8 @@ let next_drop_log = 0;
 io.on( 'connection', ( socket )=> 
 //io.onConnection( socket =>
 {
+	sdByteShifter.InstallDebugFeatures( socket );
+
 	socket.likely_a_real_player = true; // Can be a sign of webcrawler too, though these are likely to disconnect quickly
 	
 	// Note: Make sure to remove all pointers at socket.on('disconnect', () => 
@@ -1140,7 +1153,7 @@ io.on( 'connection', ( socket )=>
 		socket.client = { conn: { transport: { writable: true } } }; // Fake object just to keep main logic working
 	}
 	
-	socket.sent_result_ok = 0;
+	/*socket.sent_result_ok = 0;
 	socket.sent_result_dropped = 0;
 
 	socket.left_overs = {};
@@ -1148,9 +1161,11 @@ io.on( 'connection', ( socket )=>
 
 	socket.sent_messages = new Map(); // { data: full_msg, time: sdWorld.time, arrived: false }
 	socket.sent_messages_first = 0;
-	socket.sent_messages_last = 0;
+	socket.sent_messages_last = 0;*/
+	
+	socket.byte_shifter = new sdByteShifter( socket );
 
-	socket.myDrop = ( drop ) => // { event, data }
+	/*socket.myDrop = ( drop ) => // { event, data }
 	{
 		if ( drop.event === 'RESv2' )
 		{
@@ -1167,7 +1182,7 @@ io.on( 'connection', ( socket )=>
 			}
 			for ( let i = 0; i < drop.data[ 3 ].length; i++ )
 			{
-				if ( drop.data[ 3 ][ i ][ 0 ] === 'EFF' && ( drop.data[ 3 ][ i ][ 1 ].type === sdEffect.TYPE_CHAT /*|| drop.data[ 3 ][ i ][ 1 ].type === sdEffect.TYPE_BEAM || drop.data[ 3 ][ i ][ 1 ].type === sdEffect.TYPE_EXPLOSION || drop.data[ 3 ][ i ][ 1 ].type === sdEffect.TYPE_BLOOD*/ ) )
+				if ( drop.data[ 3 ][ i ][ 0 ] === 'EFF' && ( drop.data[ 3 ][ i ][ 1 ].type === sdEffect.TYPE_CHAT ) )
 				{
 					if ( typeof drop.data[ 3 ][ i ][ 1 ].UC === 'undefined' ) // These can not be resent because they lack .UC set, which is unique ID for them so player knows he already applied these events.
 					continue;
@@ -1187,7 +1202,7 @@ io.on( 'connection', ( socket )=>
 				}
 			}
 		}
-	};
+	};*/
 	
 	let ip = null;
 	let details = null;
@@ -1692,6 +1707,8 @@ io.on( 'connection', ( socket )=>
 		
 		let character_entity = null;
 		
+		let skip_arrival_sequence = false;
+		
 		function RemoveOldPlayerOnSocket()
 		{
 			if ( socket.character )
@@ -1756,7 +1773,8 @@ io.on( 'connection', ( socket )=>
 			}
 			
 			if ( sdWorld.server_config.PlayerSpawnPointSeeker )
-			sdWorld.server_config.PlayerSpawnPointSeeker( character_entity, socket );
+			if ( sdWorld.server_config.PlayerSpawnPointSeeker( character_entity, socket ) )
+			skip_arrival_sequence = true;
 		}
 		function TryToAssignDisconnectedPlayerEntity()
 		{
@@ -1936,7 +1954,7 @@ io.on( 'connection', ( socket )=>
 		if ( player_settings.full_reset )
 		{
 			if ( sdWorld.server_config.onRespawn )
-			sdWorld.server_config.onRespawn( character_entity, player_settings );
+			sdWorld.server_config.onRespawn( character_entity, player_settings, skip_arrival_sequence );
 			/*
 			let guns = [ sdGun.CLASS_BUILD_TOOL ];
 			if ( player_settings.start_with1 )
@@ -2035,8 +2053,19 @@ io.on( 'connection', ( socket )=>
 	
 	socket.last_gsco_time = sdWorld.time;
 	
+	//let last_message_id = -1;
+	
 	socket.on('Kv2', ( sd_events )=>
 	{
+		// Prevent out of order messages, which happens
+		/*if ( message_id instanceof Number )
+		{
+			if ( message_id <= last_message_id )
+			return;
+			else
+			last_message_id = message_id;
+		}*/
+		
 		if ( sd_events instanceof Array )
 		if ( sd_events.length < 32 )
 		for ( var i = 0; i < sd_events.length; i++ )
@@ -2194,6 +2223,19 @@ io.on( 'connection', ( socket )=>
 					socket.OnMouseMovementAndCorrectionsSnapshot( sd_events[ i ][ 2 ] );
 					
 					socket.last_gsco_time = sdWorld.time;
+					
+					let held_key_ids = sd_events[ i ][ 3 ];
+					if ( held_key_ids instanceof Array )
+					for ( let i = 0; i < sdKeyStates.default_state_keys.length; i++ )
+					{
+						let prop = sdKeyStates.default_state_keys[ i ];
+
+						let old_value = socket.character._key_states.key_states[ prop ];
+						let new_value = ( held_key_ids.indexOf( i ) !== -1 ) ? 1 : 0;
+
+						if ( old_value !== new_value )
+						socket.character._key_states.key_states[ prop ] = new_value;
+					}
 				}
 				else
 				if ( type === 'K1' )
@@ -2341,6 +2383,7 @@ io.on( 'connection', ( socket )=>
 		if ( typeof arr[ 5 ] === 'number' )
 		if ( typeof arr[ 6 ] === 'number' )
 		if ( typeof arr[ 7 ] === 'number' )
+		//if ( typeof arr[ 8 ] === 'number' ) //
 		if ( typeof arr[ 8 ] === 'object' ) //
 		if ( typeof arr[ 9 ] === 'number' )
 		if ( typeof arr[ 10 ] === 'number' )
@@ -2349,7 +2392,7 @@ io.on( 'connection', ( socket )=>
 			socket.waiting_on_M_event_until = 0;
 			
 			if ( socket.character ) 
-			if ( !socket.character.is( sdPlayerSpectator ) ) 
+			//if ( !socket.character.is( sdPlayerSpectator ) ) 
 			{ 
 				/*let test_ent = sdEntity.entities_by_net_id_cache_map.get( 40580166 ); // Hack. Testing what is wrong here - possibly compression fails
 				socket.character.x = test_ent.x;
@@ -2365,7 +2408,8 @@ io.on( 'connection', ( socket )=>
 				socket.camera.y = arr[ 3 ];
 				//socket.camera.scale = arr[ 4 ]; // Why?
 
-				let messages_to_report_arrival = arr[ 8 ];
+				socket.byte_shifter.ClientReportedArrival( arr[ 8 ] );
+				/*let messages_to_report_arrival = arr[ 8 ];
 
 				for ( let i = 0; i < Math.min( 100, messages_to_report_arrival.length ); i++ )
 				{
@@ -2375,7 +2419,7 @@ io.on( 'connection', ( socket )=>
 						let msg = socket.sent_messages.get( id );
 						msg.arrived = true;
 					}
-				}
+				}*/
 				
 				let look_at_net_id = arr[ 9 ];
 				let look_at_relative_to_direct_angle = arr[ 10 ];
@@ -2600,6 +2644,7 @@ io.on( 'connection', ( socket )=>
 							socket.next_position_correction_allowed = sdWorld.time + 50;
 							
 							socket.sd_events.push( [ 'C', [ socket.character.x, socket.character.y, socket.character.sx, socket.character.sy ] ] );
+							//socket.sd_events.push( [ 'C', [ socket.character.x - arr[ 5 ], socket.character.y - arr[ 6 ], socket.character.sx, socket.character.sy ] ] );
 						}
 					}
 				}
@@ -2784,7 +2829,7 @@ io.on( 'connection', ( socket )=>
 			socket.SDServiceMessage( 'Storage no longer exists' );
 		}
 	});*/
-	socket.on('UPGRADE_STAT', ( arr ) => { 
+	/*socket.on('UPGRADE_STAT', ( arr ) => { 
 		
 		if ( !( arr instanceof Array ) )
 		return;
@@ -2820,7 +2865,8 @@ io.on( 'connection', ( socket )=>
 			socket.SDServiceMessage( 'Upgrade station no longer exists' );
 		}
 	});
-	socket.on('UPGRADE_GET_EQUIP', ( arr ) => { 
+	*/
+	/*socket.on('UPGRADE_GET_EQUIP', ( arr ) => { 
 		
 		if ( !( arr instanceof Array ) )
 		return;
@@ -2856,7 +2902,8 @@ io.on( 'connection', ( socket )=>
 			socket.SDServiceMessage( 'Upgrade station no longer exists' );
 		}
 	});
-	socket.on('UPGRADE_CHAR', ( arr ) => { 
+	*/
+	/*socket.on('UPGRADE_CHAR', ( arr ) => { 
 		
 		if ( !( arr instanceof Array ) )
 		return;
@@ -2887,6 +2934,7 @@ io.on( 'connection', ( socket )=>
 			socket.SDServiceMessage( 'Upgrade station no longer exists' );
 		}
 	});
+	*/
 	/*socket.on('CRYSTAL_COMBINE', ( arr ) => { 
 		
 		if ( !( arr instanceof Array ) )
@@ -3101,6 +3149,16 @@ globalThis.StopAllWorkers = ()=> // Probably not needed
 		worker_services[ i ].Execute({ action: WorkerServiceLogic.ACTION_EXIT });
 	}*/
 };
+/*
+
+	To disable workers:
+		
+	globalThis.ExecuteParallel = ( command, callback )=>
+	{
+		WorkerServiceLogic.HandleCommand( command, callback );
+	};
+
+*/
 globalThis.ExecuteParallel = ( command, callback )=>
 {
 	for ( let i = 0; i < worker_services.length; i++ )
@@ -3207,7 +3265,7 @@ const ServerMainMethod = ()=>
 		{
 			let socket = sockets[ i ]; // can disappear from array in the middle of loop
 			
-			if ( !SOCKET_IO_MODE )
+			/*if ( !SOCKET_IO_MODE )
 			{
 				
 				if ( socket.sent_result_ok > 10 )
@@ -3240,9 +3298,7 @@ const ServerMainMethod = ()=>
 					socket.sent_result_ok *= 0.8;
 					socket.sent_result_dropped *= 0.8;
 				}
-			}
-			//else
-			//socket.max_update_rate = sdWorld.max_update_rate;
+			}*/
 
 			if ( !socket.character || socket.character._is_being_removed )
 			{
@@ -3260,6 +3316,7 @@ const ServerMainMethod = ()=>
 				{
 					socket.character.lag = !socket.client.conn.transport.writable;
 				}
+				/*
 				
 				if ( i % only_do_nth_connection_per_frame === nth_connection_shift )
 				if ( sdWorld.time > socket.last_sync + socket.max_update_rate && socket.client.conn.transport.writable && sdWorld.time > socket.waiting_on_M_event_until ) // Buffering prevention?
@@ -3302,76 +3359,15 @@ const ServerMainMethod = ()=>
 
 							const MaxCompleteEntitiesCount = 40; // 50 sort of fine for PC, but now for mobile
 
-							//let meet_once = new WeakSet();
-							//let meet_once2 = new Set();
+
 							const visited_ent_flag = sdEntity.GetUniqueFlagValue();
-							//this._flag = visited_ent_flag;
 							
-							//socket.reaction_to_seen_entities_offset++;
-
-							/*let cell_direct_visibility = new Map();
-							
-							const CanBeDirectlySeen = ( x, y )=>
-							{
-								x = Math.round( ( x - 8 ) / 16 ) * 16 + 8;
-								y = Math.round( ( y - 8 ) / 16 ) * 16 + 8;
-								
-								let dx = x - socket.character.x;
-								let dy = y - socket.character.y;
-								
-								if ( Math.abs( dx ) < 8 || Math.abs( dy ) < 8 )
-								return true;
-								
-								if ( Math.abs( dx ) > Math.abs( dy ) )
-								{
-									dy = dy / dx * 16;
-									dx = dx / dx * 16;
-								}
-								else
-								{
-									dx = dx / dy * 16;
-									dy = dy / dy * 16;
-								}
-								
-								function SolveFor( x, y )
-								{
-									let result;
-									
-									if ( Math.abs( socket.character.x - x ) < 32 && Math.abs( socket.character.y - y ) < 32 )
-									{
-										result = true;
-									}
-									else
-									{
-										let hash = x * 5000 + y;
-
-										result = cell_direct_visibility.get( hash );
-
-										if ( result === undefined )
-										{
-											result = SolveFor( x - dx, y - dy ) && sdWorld.CheckWallExists( x - dx, y - dy, null, null, sdCom.com_vision_blocking_classes );
-
-											cell_direct_visibility.set( hash, result );
-										}
-									}
-									
-									return result;
-								}
-								
-								return SolveFor( x, y );
-							};*/
 							
 							const triggers_sync = !socket.character.is( sdPlayerSpectator ); // Also used for task sync
 
 							const AddEntity = ( ent, forced )=>
 							{
-								/*
-								if ( ent === sdWeather.only_instance )
-								{
-									debugger;
-								}
-								*/
-
+							
 								//if ( //!meet_once.has( ent ) && 
 									 //!meet_once2.has( ent._net_id ) )
 								if ( ent._flag !== visited_ent_flag )
@@ -3382,14 +3378,8 @@ const ServerMainMethod = ()=>
 
 									if ( ent.IsVisible === sdEntity.prototype.IsVisible || 
 										 ent.IsVisible( socket.character ) )
-									/*if ( CanBeDirectlySeen( 
-											ent.x + ( ent._hitbox_x1 + ent._hitbox_x2 ) / 2,
-											ent.y + ( ent._hitbox_y1 + ent._hitbox_y2 ) / 2 )
-										)*/
+									
 									{
-										/*if ( socket.character.GetClass() !== 'sdPlayerSpectator' )
-										if ( ent.GetClass() === 'sdPlayerSpectator' )
-										debugger;*/
 
 										if ( ent.is_static ) // 5.8
 										{
@@ -3421,10 +3411,6 @@ const ServerMainMethod = ()=>
 										if ( triggers_sync )
 										ent.SyncedToPlayer( socket.character );
 								
-										/*if ( socket.reaction_to_seen_entities_offset % 400 === ent._net_id % 400 )
-										{
-											socket.character.onSeesEntity( ent );
-										}*/
 
 										if ( ent.getRequiredEntities !== sdEntity.prototype.getRequiredEntities )
 										{
@@ -3562,12 +3548,6 @@ const ServerMainMethod = ()=>
 									let x = sdWorld.limit( min_x, socket.character.x, max_x );
 									let y = sdWorld.limit( min_y, socket.character.y, max_y );
 									
-									/*if ( Math.random() < 0.05 )
-									{
-										sdWorld.SendEffect({ x:x, y:y, x2:min_x, y2:min_y, type:sdEffect.TYPE_BEAM, color:'#00ff00' });
-										sdWorld.SendEffect({ x:x, y:y, x2:max_x, y2:min_y, type:sdEffect.TYPE_BEAM, color:'#00ff00' });
-									}*/
-
 									const dx = Math.sin( b / 32 * Math.PI * 2 ) * 16;
 									const dy = Math.cos( b / 32 * Math.PI * 2 ) * 16;
 
@@ -3629,28 +3609,6 @@ const ServerMainMethod = ()=>
 								}
 							}
 							
-							
-							/*let t1 = Date.now();
-							
-							perf_test_scan_method_results[ perf_test_scan_method ] += t1 - t0;
-							
-							if ( perf_test_scan_method_iters_left < 0 )
-							{
-								perf_test_scan_method = ( perf_test_scan_method + 1 ) % 2;
-								perf_test_scan_method_iters_left = 15;
-							}
-							else
-							perf_test_scan_method_iters_left--;
-							
-							if ( perf_test_scan_method_results[ 0 ] > 10000 || perf_test_scan_method_results[ 1 ] > 10000 )
-							{
-								perf_test_scan_method_results[ 0 ] = Math.round( perf_test_scan_method_results[ 0 ] * 0.01 );
-								perf_test_scan_method_results[ 1 ] = Math.round( perf_test_scan_method_results[ 1 ] * 0.01 );
-							}
-							
-							trace( perf_test_scan_method_results );*/
-
-
 							// Forget offscreen statics (and removed ones)
 							//socket.known_statics_versions_map.forEach( ( value, key, map )=>
 							socket.known_statics_versions_map2.forEach( ( value, net_id, map )=>
@@ -3678,10 +3636,6 @@ const ServerMainMethod = ()=>
 
 									if ( key )
 									{
-										/*if ( key.GetClass() === 'sdCharacter' )
-										{
-											debugger;
-										}*/
 										
 										snapshot_of_deletion = { 
 											_class: key.GetClass(), 
@@ -3700,13 +3654,6 @@ const ServerMainMethod = ()=>
 										};
 									}
 									
-									/*for ( let i = 0; i < snapshot.length; i++ )
-									if ( snapshot[ i ]._net_id === snapshot_of_deletion._net_id )
-									throw new Error();
-									
-									for ( let i = 0; i < snapshot_only_statics.length; i++ )
-									if ( snapshot_only_statics[ i ]._net_id === snapshot_of_deletion._net_id )
-									throw new Error();*/
 
 									snapshot.push( snapshot_of_deletion );
 									snapshot_only_statics.push( snapshot_of_deletion );
@@ -3736,20 +3683,6 @@ const ServerMainMethod = ()=>
 							} );
 							socket.known_non_removed_dynamics = observed_entities_map;
 
-							/*if ( !socket.character._is_being_removed )
-							if ( observed_entities.indexOf( socket.character ) === -1 )
-							{
-								observed_entities.push( socket.character );
-
-								// Add player's vehicle
-								if ( socket.character.driver_of )
-								if ( observed_entities.indexOf( socket.character.driver_of ) === -1 )
-								observed_entities.push( socket.character.driver_of );
-
-								if ( socket.character.cc )
-								if ( observed_entities.indexOf( socket.character.cc ) === -1 )
-								observed_entities.push( socket.character.cc );
-							}*/
 
 							for ( var i2 = 0; i2 < sdEntity.global_entities.length; i2++ ) // So it is drawn on back
 							snapshot.push( sdEntity.global_entities[ i2 ].GetSnapshot( frame, false, socket.character ) );
@@ -4014,6 +3947,13 @@ const ServerMainMethod = ()=>
 						SyncDataToPlayer();
 					}
 				}
+				
+				*/
+			   
+			   
+				if ( i % only_do_nth_connection_per_frame === nth_connection_shift )
+				if ( sdWorld.time > socket.last_sync + socket.max_update_rate && socket.client.conn.transport.writable && sdWorld.time > socket.waiting_on_M_event_until ) // Buffering prevention?
+				socket.byte_shifter.SendSnapshot();
 
 				if ( sdWorld.time > socket.last_ping + 60000 )
 				//if ( sdWorld.time > socket.last_ping + 3000 ) // Hack

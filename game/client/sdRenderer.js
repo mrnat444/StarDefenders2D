@@ -22,6 +22,7 @@ import sdStatusEffect from '../entities/sdStatusEffect.js';
 import sdCharacter from '../entities/sdCharacter.js';
 import sdPlayerSpectator from '../entities/sdPlayerSpectator.js';
 import sdOctopus from '../entities/sdOctopus.js';
+import sdWanderer from '../entities/sdWanderer.js';
 
 import sdAtlasMaterial from './sdAtlasMaterial.js';
 
@@ -94,7 +95,7 @@ class sdRenderer
 		document.body.insertBefore( canvas, null );
 		
 		//sdRenderer._visual_settings = 0;
-		sdRenderer.visual_settings = 0; // Still used at some parts of code
+		sdRenderer.visual_settings = 0; // 0; // Still used at some parts of code
 	
 		
 		sdRenderer.show_leader_board = 1; // Used for displaying tasks too
@@ -275,7 +276,7 @@ class sdRenderer
 					//if ( typeof image_obj_cache[ complex_filter_name ] === 'undefined' )
 					if ( !image_obj_cache_named_item )
 					{
-						if ( typeof OffscreenCanvas !== 'undefined' && "filter" in OffscreenCanvasRenderingContext2D.prototype )
+						if ( typeof OffscreenCanvas !== 'undefined' )
 						{
 							//image_obj_cache[ complex_filter_name ] = new OffscreenCanvas( image_obj.width, image_obj.height );
 							image_obj_cache_named_item = new OffscreenCanvas( image_obj.width, image_obj.height );
@@ -917,6 +918,43 @@ class sdRenderer
 				let w = offset_scale * 800 * current_camera_scale;
 				let h = offset_scale * 400 * current_camera_scale;
 				
+				// sdWanderer / background entities
+				if ( sdWanderer.wanderers.length > 0 )
+				{
+					// Same as dark land parallax canvas / background
+					//ctx.sd_color_mult_r = 
+					//ctx.sd_color_mult_g = 
+					//ctx.sd_color_mult_b = 1 / ( 1 + Math.max( 0, sdWorld.camera.y - sdWorld.base_ground_level - 256 ) * 0.003 );
+					for ( let i = 0; i < sdWanderer.wanderers.length; i++ )
+					{
+						let wanderer = sdWanderer.wanderers[ i ];
+						ctx.camera_relative_world_scale = sdRenderer.distance_scale_background - sdWanderer.wanderers[ i ].layer * 0.001;
+		
+						let xx = sdRenderer.screen_width / 2;
+						let yy = sdRenderer.screen_height / 2;
+			
+						let scale = ( 1 / ( sdRenderer.dark_lands_colors.length - sdWanderer.wanderers[ i ].layer ) ) * offset_scale * current_camera_scale;
+					
+						xx += ( 0 - sdWorld.camera.x + wanderer.x ) * scale;
+						yy += ( sdWorld.base_ground_level + 150 - sdWorld.camera.y + wanderer.y ) * scale;
+					
+						xx -= sdRenderer.screen_width / 2 * current_camera_scale;
+						yy -= sdRenderer.screen_height / 2 * current_camera_scale;
+						
+					
+						yy = Math.max( yy, yy % h - h ); // Faster for "deep down" cases
+					
+						ctx.globalAlpha = 1; // Just in case
+						
+						//ctx.drawImageFilterCache( sdWorld.CreateImageFromFile( 'fmech_boost' ), xx, yy, 64 * scale, 64 * scale );
+						ctx.drawImageFilterCache( sdWorld.CreateImageFromFile( wanderer.GetImageFromModel() ), wanderer.GetXOffsetFromModel(),wanderer.GetYOffsetFromModel(),
+						wanderer.GetWidthFromModel(), wanderer.GetHeightFromModel(), xx, yy,
+						wanderer.GetWidthFromModel() * scale * wanderer.side, wanderer.GetHeightFromModel() * scale );
+						
+						// Not ideal but it works? - Booraz149
+					}
+				}
+				//
 				
 				
 				
@@ -1884,14 +1922,14 @@ class sdRenderer
 
 					ctx.fillStyle = '#ffffff';
 					ctx.textAlign = 'center';
-					ctx.fillText( T( s.title ), sdRenderer.screen_width - ( i * 100 + 50 ) * scale, sdRenderer.screen_height - 15 );
+					ctx.fillText( T( s.title ), sdRenderer.screen_width - ( i * 120 + 50 ) * scale, sdRenderer.screen_height - 15 );
 
 					if ( s.key.charAt( 0 ) === '-' )
 					ctx.fillStyle = '#ff6666';
 					else
 					ctx.fillStyle = '#ffff00';
 				
-					ctx.fillText( s.key, sdRenderer.screen_width - ( i * 100 + 50 ) * scale, sdRenderer.screen_height - 28 );
+					ctx.fillText( s.key, sdRenderer.screen_width - ( i * 120 + 50 ) * scale, sdRenderer.screen_height - 28 );
 				}
 			}
 			ctx.globalAlpha = 1;
@@ -1985,29 +2023,30 @@ class sdRenderer
 			
 			ctx.camera_relative_world_scale = sdRenderer.distance_scale_on_screen_foreground;
 			
+			
+		}
+		
+		if ( show_hud ) // Makeing it entity-independant for case of game logic crash, to allow admin commands
+		{
 			if ( sdShop.open )
 			sdShop.Draw( ctx );
-			
+
 			if ( sdChat.open )
 			sdChat.Draw( ctx );
-			
+
 			if ( sdContextMenu.open )
 			sdContextMenu.Draw( ctx );
-		
-			if ( !sdRenderer.UseCrosshair() )
-			{
-				/*ctx.drawImage( sdWorld.img_cursor, 
-					sdWorld.mouse_screen_x, 
-					sdWorld.mouse_screen_y, 64,64 );*/
-					
-				ctx.drawImageFilterCache( sdWorld.img_cursor, 
-					sdWorld.mouse_screen_x, 
-					sdWorld.mouse_screen_y, 64,64 );
-					
-					
-			}
-			
-			
+		}
+
+		if ( !sdRenderer.UseCrosshair() )
+		{
+			/*ctx.drawImage( sdWorld.img_cursor, 
+				sdWorld.mouse_screen_x, 
+				sdWorld.mouse_screen_y, 64,64 );*/
+
+			ctx.drawImageFilterCache( sdWorld.img_cursor, 
+				sdWorld.mouse_screen_x, 
+				sdWorld.mouse_screen_y, 64,64 );
 		}
 		
 		if ( !sdWorld.my_entity || sdWorld.my_entity.hea < 0 || sdWorld.my_entity._is_being_removed )

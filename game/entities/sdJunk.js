@@ -61,6 +61,13 @@ class sdJunk extends sdEntity
 		sdJunk.TYPE_FREEZE_BARREL = 7;
 		sdJunk.TYPE_ALIEN_ARTIFACT = 8;
 		sdJunk.TYPE_STEALER_ARTIFACT = 9;
+		sdJunk.ScoreScaleByType = ( t )=>
+		{
+			if ( t === sdJunk.TYPE_ALIEN_ARTIFACT || t === sdJunk.TYPE_STEALER_ARTIFACT )
+			return 20;
+			
+			return 5;
+		};
 
 		sdJunk.bounds_by_type = [];
 		sdJunk.bounds_by_type[ sdJunk.TYPE_UNSTABLE_CUBE_CORPSE ] = { x1: -5, x2: 5, y1: -5, y2: 5 };
@@ -117,9 +124,9 @@ class sdJunk extends sdEntity
 		if ( this.type === sdJunk.TYPE_ADVANCED_MATTER_CONTAINER ) // Task reward matter container
 		this.hmax = 4000;
 		if ( this.type === sdJunk.TYPE_ERTHAL_DISTRESS_BEACON ) // Erthal distress beacon
-		this.hmax = 25000;
+		this.hmax = 10000;
 		if ( this.type === sdJunk.TYPE_COUNCIL_BOMB ) // Council bomb
-		this.hmax = 50000;
+		this.hmax = 30000;
 		if ( this.type === sdJunk.TYPE_PLANETARY_MATTER_DRAINER ) // Large anti-crystal
 		this.hmax = 1000;
 		else
@@ -217,6 +224,73 @@ class sdJunk extends sdEntity
 				this.hea -= this._max_damage; // Refund health above threshold
 				this._spawn_ent_in -= this._max_damage / 500; // Refund spawn timer when it can't deal damage
 				this._max_damage = 0;
+			}
+			
+			let old_hea = this.hea + dmg;
+			
+			if ( Math.round( old_hea / ( this.hmax / 25 ) ) > Math.round( this.hea / ( this.hmax / 25 ) ) ) // Should spawn about 25 assault drones throughout the fight
+			{
+				if ( initiator )
+				{
+					let drone = new sdDrone({ x:0, y:0 , type: 18});
+
+					sdEntity.entities.push( drone );
+								
+					let x,y;
+					let tr = 100;
+					do
+					{
+						{
+							x = initiator.x + 128 - ( Math.random() * 256 );
+
+							if ( x < sdWorld.world_bounds.x1 + 32 ) // Prevent out of bound spawns
+							x = sdWorld.world_bounds.x1 + 64 + ( Math.random() * 192 );
+
+							if ( x > sdWorld.world_bounds.x2 - 32 ) // Prevent out of bound spawns
+							x = sdWorld.world_bounds.x2 - 64 - ( Math.random() * 192 );
+						}
+
+						y = initiator.y + 128 - ( Math.random() * ( 256 ) );
+						if ( y < sdWorld.world_bounds.y1 + 32 )
+						y = sdWorld.world_bounds.y1 + 32 + 192 - ( Math.random() * ( 192 ) ); // Prevent out of bound spawns
+
+						if ( y > sdWorld.world_bounds.y2 - 32 )
+						y = sdWorld.world_bounds.y1 - 32 - 192 + ( Math.random() * ( 192 ) ); // Prevent out of bound spawns
+
+						if ( drone.CanMoveWithoutOverlap( x, y, 0 ) )
+						if ( sdWorld.CheckLineOfSight( x, y, initiator.x, initiator.y, drone, sdCom.com_visibility_ignored_classes, null ) )
+						//if ( !mech_entity.CanMoveWithoutOverlap( x, y + 32, 0 ) )
+						//if ( sdWorld.last_hit_entity === null || ( sdWorld.last_hit_entity.GetClass() === 'sdBlock' && sdWorld.last_hit_entity.material === sdBlock.MATERIAL_GROUND ) )
+						{
+							drone.x = x;
+							drone.y = y;
+							
+							drone._look_x = x + 0.5 - Math.random();
+							drone._look_y = y + 0.5 - Math.random();
+
+							sdSound.PlaySound({ name:'council_teleport', x:drone.x, y:drone.y, volume:0.5 });
+							sdWorld.SendEffect({ x:drone.x, y:drone.y, type:sdEffect.TYPE_TELEPORT, filter:'hue-rotate(' + ~~( 170 ) + 'deg)' });
+
+							if ( ( initiator._ai_team || -1 ) !== this._ai_team )
+							drone.SetTarget( initiator );
+						
+							drone._attack_timer = 10;
+
+							sdWorld.UpdateHashPosition( drone, false );
+							//console.log('Drone spawned!');
+							break;
+						}
+
+
+						tr--;
+						if ( tr < 0 )
+						{
+							drone.remove();
+							drone._broken = false;
+							break;
+						}
+					} while( true );
+				}
 			}
 		}
 
@@ -428,11 +502,23 @@ class sdJunk extends sdEntity
 
 				}, 500 );
 
-				if ( this.type === sdJunk.TYPE_COUNCIL_BOMB && Math.random() < 0.05 ) // 5% chance for Council Immolator
+				if ( this.type === sdJunk.TYPE_COUNCIL_BOMB && Math.random() < 0.10 ) // 10% chance for Council Immolator
 				setTimeout(()=>{ // Hacky, without this gun does not appear to be pickable or interactable...
 
 				let gun2;
 				gun2 = new sdGun({ x:x, y:y, class:sdGun.CLASS_COUNCIL_IMMOLATOR });
+
+				//gun.sx = sx;
+				//gun.sy = sy;
+				sdEntity.entities.push( gun2 );
+
+				}, 500 );
+				
+				if ( this.type === sdJunk.TYPE_COUNCIL_BOMB && Math.random() < 0.02 ) // 2% chance for Exalted core
+				setTimeout(()=>{ // Hacky, without this gun does not appear to be pickable or interactable...
+
+				let gun2;
+				gun2 = new sdGun({ x:x, y:y, class:sdGun.CLASS_EXALTED_CORE });
 
 				//gun.sx = sx;
 				//gun.sy = sy;
@@ -666,7 +752,7 @@ class sdJunk extends sdEntity
 								executer: sdWorld.sockets[ i ].character,
 								target: this,
 								mission: sdTask.MISSION_DESTROY_ENTITY,
-								difficulty: 0.334 * sdTask.GetTaskDifficultyScaler(),
+								difficulty: 0.334,
 								time_left: ( this.detonation_in - 30 * 2 ),
 								title: 'Disarm Council bomb',
 								description: 'Looks like Council paid us a visit and decided to bomb some parts of the planet. Stop them!'
@@ -720,9 +806,21 @@ class sdJunk extends sdEntity
 						}
 						if ( spawn_cubes === true ) // Spawn a ton of cubes
 						{
-							sdWeather.only_instance.ExecuteEvent( 2 );
-							sdWeather.only_instance.ExecuteEvent( 2 );
-							sdWeather.only_instance.ExecuteEvent( 2 );
+							sdWeather.only_instance.ExecuteEvent({
+								event: 2,
+								near_entity: this,
+								group_radius: 3000
+							});
+							sdWeather.only_instance.ExecuteEvent({
+								event: 2,
+								near_entity: this,
+								group_radius: 3000
+							});
+							sdWeather.only_instance.ExecuteEvent({
+								event: 2,
+								near_entity: this,
+								group_radius: 3000
+							});
 						}
 					}
 					
@@ -764,29 +862,16 @@ class sdJunk extends sdEntity
 
 							{
 								let x,y;
-								let tr = 1000;
+								let tr = 100;
 								do
 								{
-									if ( left_side )
-									{
-										x = this.x + 16 + 16 * councils + ( Math.random() * 192 );
+									x = this.x + 192 - ( Math.random() * 384 );
 
-										if (x < sdWorld.world_bounds.x1 + 32 ) // Prevent out of bound spawns
-										x = sdWorld.world_bounds.x1 + 32 + 16 + 16 * councils + ( Math.random() * 192 );
+									if ( x < sdWorld.world_bounds.x1 + 32 ) // Prevent out of bound spawns
+									x = sdWorld.world_bounds.x1 + 64 + ( Math.random() * 192 );
 
-										if (x > sdWorld.world_bounds.x2 - 32 ) // Prevent out of bound spawns
-										x = sdWorld.world_bounds.x2 - 32 - 16 - 16 * councils - ( Math.random() * 192 );
-									}
-									else
-									{
-										x = this.x - 16 - 16 * councils - ( Math.random() * 192 );
-
-										if (x < sdWorld.world_bounds.x1 + 32 ) // Prevent out of bound spawns
-										x = sdWorld.world_bounds.x1 + 32 + 16 + 16 * councils + ( Math.random() * 192 );
-
-										if (x > sdWorld.world_bounds.x2 - 32 ) // Prevent out of bound spawns
-										x = sdWorld.world_bounds.x2 - 32 - 16 - 16 * councils - ( Math.random() * 192 );
-									}
+									if ( x > sdWorld.world_bounds.x2 - 32 ) // Prevent out of bound spawns
+									x = sdWorld.world_bounds.x2 - 64 - ( Math.random() * 192 );
 
 									y = this.y + 192 - ( Math.random() * ( 384 ) );
 									if ( y < sdWorld.world_bounds.y1 + 32 )
@@ -836,93 +921,142 @@ class sdJunk extends sdEntity
 										}, 20000 ); // Despawn the Council Vanquishers if they are in world longer than intended
 
 										break;
-								}
-
-
-								tr--;
-								if ( tr < 0 )
-								{
-									character_entity.remove();
-									character_entity._broken = false;
-									break;
-								}
-							} while( true );
-						}
-						councils++;
-						ais++;
-						}
-					}
-					{
-						// Spawn a council support drone
-						if ( this._current_minions_count < 3 )
-						{
-
-							let left_side = ( Math.random() < 0.5 );
-
-							let drone = new sdDrone({ x:0, y:0 , _ai_team: 3, type: 6, minion_of: this });
-
-							sdEntity.entities.push( drone );
-
-							{
-								let x,y;
-								let tr = 1000;
-								do
-								{
-									if ( left_side )
-									{
-										x = this.x + 16 + 16 + ( Math.random() * 192 );
-
-										if ( x < sdWorld.world_bounds.x1 + 32 ) // Prevent out of bound spawns
-										x = sdWorld.world_bounds.x1 + 32 + 16 + 16 + ( Math.random() * 192 );
-
-										if ( x > sdWorld.world_bounds.x2 - 32 ) // Prevent out of bound spawns
-										x = sdWorld.world_bounds.x2 - 32 - 16 - 16 - ( Math.random() * 192 );
 									}
-									else
-									{
-										x = this.x - 16 - 16 - ( Math.random() * 192 );
-
-										if ( x < sdWorld.world_bounds.x1 + 32 ) // Prevent out of bound spawns
-										x = sdWorld.world_bounds.x1 + 32 + 16 + 16 + ( Math.random() * 192 );
-
-										if ( x > sdWorld.world_bounds.x2 - 32 ) // Prevent out of bound spawns
-										x = sdWorld.world_bounds.x2 - 32 - 16 - 16 - ( Math.random() * 192 );
-									}
-
-									y = this.y + 192 - ( Math.random() * ( 384 ) );
-									if ( y < sdWorld.world_bounds.y1 + 32 )
-									y = sdWorld.world_bounds.y1 + 32 + 192 - ( Math.random() * ( 192 ) ); // Prevent out of bound spawns
-
-									if ( y > sdWorld.world_bounds.y2 - 32 )
-									y = sdWorld.world_bounds.y1 - 32 - 192 + ( Math.random() * ( 192 ) ); // Prevent out of bound spawns
-
-									if ( drone.CanMoveWithoutOverlap( x, y, 0 ) )
-									//if ( !mech_entity.CanMoveWithoutOverlap( x, y + 32, 0 ) )
-									//if ( sdWorld.last_hit_entity === null || ( sdWorld.last_hit_entity.GetClass() === 'sdBlock' && sdWorld.last_hit_entity.material === sdBlock.MATERIAL_GROUND ) )
-									{
-										drone.x = x;
-										drone.y = y;
-
-										sdSound.PlaySound({ name:'council_teleport', x:drone.x, y:drone.y, volume:0.5 });
-										sdWorld.SendEffect({ x:drone.x, y:drone.y, type:sdEffect.TYPE_TELEPORT, filter:'hue-rotate(' + ~~( 170 ) + 'deg)' });
-
-										drone.SetTarget( this );
-
-										sdWorld.UpdateHashPosition( drone, false );
-										//console.log('Drone spawned!');
-										//this._current_minions_count++;
-										break;
-									}
-
 
 									tr--;
 									if ( tr < 0 )
 									{
-										drone.remove();
-										drone._broken = false;
+										character_entity.remove();
+										character_entity._broken = false;
 										break;
 									}
 								} while( true );
+							}
+							councils++;
+							ais++;
+						}
+					}
+					{
+						// Spawn a council support drone
+						if ( this.hea < ( this.hmax * 0.85 ) )
+						{
+							if ( Math.random() < 0.8 ) // 80% it spawns a support healing Drone
+							{
+								let spawn_count = ( this.hea < this.hmax * 0.5 ) ? 2 : 1;
+								for ( let i = 0; i < spawn_count; i++ )
+								{
+									if ( this._current_minions_count < 3 )
+									{
+										let drone = new sdDrone({ x:0, y:0 , _ai_team: 3, type: 6, minion_of: this });
+
+										sdEntity.entities.push( drone );
+										
+										let x,y;
+										let tr = 100;
+										do
+										{
+											{
+												x = this.x + 192 - ( Math.random() * 384 );
+
+												if ( x < sdWorld.world_bounds.x1 + 32 ) // Prevent out of bound spawns
+												x = sdWorld.world_bounds.x1 + 64 + ( Math.random() * 192 );
+
+												if ( x > sdWorld.world_bounds.x2 - 32 ) // Prevent out of bound spawns
+												x = sdWorld.world_bounds.x2 - 64 - ( Math.random() * 192 );
+											}
+
+											y = this.y + 192 - ( Math.random() * ( 384 ) );
+											if ( y < sdWorld.world_bounds.y1 + 32 )
+											y = sdWorld.world_bounds.y1 + 32 + 192 - ( Math.random() * ( 192 ) ); // Prevent out of bound spawns
+
+											if ( y > sdWorld.world_bounds.y2 - 32 )
+											y = sdWorld.world_bounds.y1 - 32 - 192 + ( Math.random() * ( 192 ) ); // Prevent out of bound spawns
+
+											if ( drone.CanMoveWithoutOverlap( x, y, 0 ) )
+											//if ( !mech_entity.CanMoveWithoutOverlap( x, y + 32, 0 ) )
+											//if ( sdWorld.last_hit_entity === null || ( sdWorld.last_hit_entity.GetClass() === 'sdBlock' && sdWorld.last_hit_entity.material === sdBlock.MATERIAL_GROUND ) )
+											{
+												drone.x = x;
+												drone.y = y;
+
+												sdSound.PlaySound({ name:'council_teleport', x:drone.x, y:drone.y, volume:0.5 });
+												sdWorld.SendEffect({ x:drone.x, y:drone.y, type:sdEffect.TYPE_TELEPORT, filter:'hue-rotate(' + ~~( 170 ) + 'deg)' });
+
+												drone.SetTarget( this );
+
+												sdWorld.UpdateHashPosition( drone, false );
+												//console.log('Drone spawned!');
+												break;
+											}
+
+
+											tr--;
+											if ( tr < 0 )
+											{
+												drone.remove();
+												drone._broken = false;
+												break;
+											}
+										} while( true );
+									}
+								}
+							}
+							else // Worm time
+							{
+								let worm = new sdSandWorm({ x:0, y:0 , kind:3, scale:0.5});
+
+								sdEntity.entities.push( worm );
+
+								{
+									let x,y;
+									let tr = 100;
+									do
+									{
+										{
+											x = this.x + 192 - ( Math.random() * 384 );
+
+											if ( x < sdWorld.world_bounds.x1 + 32 ) // Prevent out of bound spawns
+											x = sdWorld.world_bounds.x1 + 32 + 16 + 16 + ( Math.random() * 192 );
+
+											if ( x > sdWorld.world_bounds.x2 - 32 ) // Prevent out of bound spawns
+											x = sdWorld.world_bounds.x2 - 32 - 16 - 16 - ( Math.random() * 192 );
+										}
+
+										y = this.y + 192 - ( Math.random() * ( 384 ) );
+										if ( y < sdWorld.world_bounds.y1 + 32 )
+										y = sdWorld.world_bounds.y1 + 32 + 192 - ( Math.random() * ( 192 ) ); // Prevent out of bound spawns
+
+										if ( y > sdWorld.world_bounds.y2 - 32 )
+										y = sdWorld.world_bounds.y1 - 32 - 192 + ( Math.random() * ( 192 ) ); // Prevent out of bound spawns
+
+										if ( worm.CanMoveWithoutOverlap( x, y, 0 ) )
+										if ( sdWorld.CheckLineOfSight( x, y, this.x, this.y, worm, sdCom.com_visibility_ignored_classes, null ) )
+										//if ( !mech_entity.CanMoveWithoutOverlap( x, y + 32, 0 ) )
+										//if ( sdWorld.last_hit_entity === null || ( sdWorld.last_hit_entity.GetClass() === 'sdBlock' && sdWorld.last_hit_entity.material === sdBlock.MATERIAL_GROUND ) )
+										{
+											worm.x = x;
+											worm.y = y;
+
+											sdSound.PlaySound({ name:'council_teleport', x:worm.x, y:worm.y, volume:0.5 });
+											sdWorld.SendEffect({ x:worm.x, y:worm.y, type:sdEffect.TYPE_TELEPORT, filter:'hue-rotate(' + ~~( 170 ) + 'deg)' });
+
+											//worm.SetTarget( this );
+
+											sdWorld.UpdateHashPosition( worm, false );
+											//console.log('worm spawned!');
+											break;
+										}
+
+
+										tr--;
+										if ( tr < 0 )
+										{
+											worm.remove();
+											worm._broken = false;
+											break;
+										}
+									} while( true );
+								}
 							}
 						}
 					}
@@ -954,8 +1088,12 @@ class sdJunk extends sdEntity
 				else
 				{
 					this._spawn_ent_in = this._spawn_ent_in_delay; // 30 seconds
-					this._spawn_ent_in_delay *= 1.1; // 1.25 seemed way too weak
-					sdWeather.only_instance.ExecuteEvent( 11 ); // Execute Erthal spawn event
+					this._spawn_ent_in_delay *= 1.03; // 1.25 seemed way too weak. And so did 1.1
+					sdWeather.only_instance.ExecuteEvent({
+						event: sdWeather.EVENT_ERTHALS,
+						near_entity: this,
+						group_radius: ( Math.random() < 0.5 ) ? 400 : 3000
+					}); // Execute Erthal spawn event
 					
 					if ( this._spawn_ent_in_delay > 60 * 60 * 24 )
 					{
@@ -1115,14 +1253,15 @@ class sdJunk extends sdEntity
 			}
 			if ( this.type === sdJunk.TYPE_ERTHAL_DISTRESS_BEACON ) // Erthal distress beacon
 			{
-				ctx.drawImageFilterCache( sdJunk.img_erthal_beacon, - 32, - 32, 64, 64 );
+				let frame = Math.min( 2, Math.floor( ( 1 - ( this.hea / this.hmax ) ) * 3 ) );
+				ctx.drawImageFilterCache( sdJunk.img_erthal_beacon, frame*64,0,64,64, - 32, - 32, 64, 64 );
 			}
 			if ( this.type === sdJunk.TYPE_ADVANCED_MATTER_CONTAINER ) // Task reward / Advanced matter container
 			{
 
 				ctx.drawImageFilterCache( sdJunk.img_matter_container2_empty, - 32, - 32, 64, 64 );
 		
-				ctx.filter = sdWorld.GetCrystalHue( 40960 );
+				ctx.filter = sdWorld.GetCrystalHue( -1 );
 	
 				ctx.globalAlpha = this.matter / this.matter_max;
 		

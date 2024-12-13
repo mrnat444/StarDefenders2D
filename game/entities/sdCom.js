@@ -76,7 +76,7 @@ class sdCom extends sdEntity
 			'sdLongRangeAntenna', 
 			'sdVeloxFortifier', 
 			'sdSolarMatterDistributor', 
-			'sdVestroid' 
+			'sdVestroid'
 		]; 
 		sdCom.com_visibility_unignored_classes = [ 'sdBlock', 'sdDoor', 'sdMatterContainer', 'sdMatterAmplifier', 'sdCommandCentre', 'sdLongRangeTeleport', 'sdManualTurret' ]; // Used for early threat logic now. Coms don't really trace raycasts anymore. These arrays are a mess though.
 
@@ -111,7 +111,8 @@ class sdCom extends sdEntity
 			'sdFaceCrab', 
 			'sdCube', 
 			'sdCouncilIncinerator', 
-			'sdVestroid' 
+			'sdTzyrgMortar', 
+			'sdVestroid'
 		]; 
 		
 		sdCom.com_vision_blocking_classes = [ 'sdBlock', 'sdDoor' ];
@@ -495,8 +496,11 @@ class sdCom extends sdEntity
 		
 		return 60;
 	}
+	
 	RequireSpawnAlign()
-	{ return false; }
+	{ return true; }
+	get spawn_align_x(){ return 4; };
+	get spawn_align_y(){ return 4; };
 	
 	GetHackablesNearby( complain_as=null )
 	{

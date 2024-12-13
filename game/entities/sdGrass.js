@@ -290,7 +290,7 @@ class sdGrass extends sdEntity
 								xx += Math.sin( an ) * 8;
 								yy += Math.cos( an ) * 4;
 
-								let ent = new sdCrystal({ x: xx, y: yy, tag:'deep', type:sdCrystal.TYPE_CRYSTAL_BALLOON });
+								let ent = new sdCrystal({ x: xx, y: yy, tag:'deep', from_tree:this, type:sdCrystal.TYPE_CRYSTAL_BALLOON });
 								sdEntity.entities.push( ent );
 
 								if ( !ent.CanMoveWithoutOverlap( ent.x, ent.y ) )
@@ -448,7 +448,7 @@ class sdGrass extends sdEntity
 				//ctx.volumetric_mode = this.crystal.DrawIn3D(); // Not restored
 				//ctx.object_offset = [ 0, -10, 0 ];
 				ctx.translate( this.crystal.x - this.x, this.crystal.y - this.y );
-				this.crystal.Draw( ctx, true );
+				this.crystal.DrawWithStatusEffects( ctx, true );
 			}
 			ctx.restore();
 		}
@@ -603,8 +603,8 @@ class sdGrass extends sdEntity
 			{
 				let coefficient = ( sdGrass.heights[ this.variation ] / 27 );
 
-				if ( from_entity.matter_regen < 400 )
-				from_entity.matter_regen = Math.min( from_entity.matter_regen + 8 * coefficient, 400 );
+				if ( from_entity.matter_regen < sdCrystal.max_matter_regen )
+				from_entity.matter_regen = Math.min( from_entity.matter_regen + 8 * coefficient, sdCrystal.max_matter_regen );
 
 				from_entity._hea = Math.min( from_entity._hea + 10 * coefficient, from_entity._hmax );
 

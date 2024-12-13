@@ -418,7 +418,7 @@ class sdCrystalCombiner extends sdEntity
 				ctx.save();
 				{
 					ctx.translate( this.crystal0.x - this.x, this.crystal0.y - this.y );
-					this.crystal0.Draw( ctx, true );
+					this.crystal0.DrawWithStatusEffects( ctx, true );
 				}
 				ctx.restore();
 			}
@@ -427,7 +427,7 @@ class sdCrystalCombiner extends sdEntity
 				ctx.save();
 				{
 					ctx.translate( this.crystal1.x - this.x, this.crystal1.y - this.y );
-					this.crystal1.Draw( ctx, true );
+					this.crystal1.DrawWithStatusEffects( ctx, true );
 				}
 				ctx.restore();
 			}
@@ -535,6 +535,9 @@ class sdCrystalCombiner extends sdEntity
 			ent.matter_max = this.crystal0.matter_max + this.crystal1.matter_max;
 			ent.matter = this.crystal0.matter + this.crystal1.matter;
 			ent.matter_regen = ( this.crystal0.matter_regen + this.crystal1.matter_regen ) / 2;
+			
+			if ( Math.random() < 0.9 ) // 10% to keep speciality
+			ent.speciality = 0;
 			
 			if ( ent.is_anticrystal )
 			ent.matter_regen = 100; // Reset regen in this case as it does not matter for these for them to be properly rated by Rifts, LRTPs and BSUs

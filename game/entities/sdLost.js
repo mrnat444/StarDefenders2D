@@ -53,7 +53,7 @@ class sdLost extends sdEntity
 	{
 		let is_dead = ( ( ent.hea || ent._hea || 1 ) <= 0 );
 		
-		if ( ( ent._hard_collision && !ent.is( sdCrystal ) && !( ent.is( sdAsp ) && ent._tier === 2 ) && !ent.is( sdLost ) && ( !ent.is( sdJunk ) || ent.type !== 2 ) ) ||
+		if ( ( ent._hard_collision && !ent.is( sdCrystal ) && !( ent.is( sdAsp ) && ( ent.tier === 2 || ent.tier === 3 ) ) && !ent.is( sdLost ) && ( !ent.is( sdJunk ) || ent.type !== 2 ) ) ||
 			 ( !ent._hard_collision && ( ent.is( sdFaceCrab ) || ( ent.is( sdGun ) && ent.class !== sdGun.CLASS_CRYSTAL_SHARD && ent.class !== sdGun.CLASS_SCORE_SHARD ) || is_dead ) ) ) // Not for BG entities
 		if ( ent._is_bg_entity === 0 ) // Not for BG entities
 		if ( ent.IsTargetable() )
@@ -102,7 +102,7 @@ class sdLost extends sdEntity
 				if ( ent.is( sdMatterAmplifier ) )
 				ent.DropCrystal();
 			
-				if ( ent.is( sdAsp ) && ent._tier === 1 )
+				if ( ent.is( sdAsp ) && ent.tier === 1 )
 				{
 					ent.remove();
 					ent._broken = false;
@@ -209,7 +209,7 @@ class sdLost extends sdEntity
 		}
 	}
 	
-	static CreateLostCopy( ent, title='', f=sdLost.FILTER_GOLDEN )
+	static CreateLostCopy( ent, title='', f=sdLost.FILTER_GOLDEN, time = -1 )
 	{
 		let ent2 = new sdLost({
 			x: ent.x,
@@ -228,6 +228,7 @@ class sdLost extends sdEntity
 			s: ent.is_static,
 			t: title,
 			f: f,
+			time_left: time,
 			
 			copy_of_class: ent.GetClass(),
 			title_as_storage_item: ent.is( sdCrystal ) ? sdStorage.GetTitleForCrystal( ent ) : '?'
@@ -308,11 +309,12 @@ class sdLost extends sdEntity
 		this.t = params.t || null;
 		this._title_as_storage_item = params.title_as_storage_item || '';
 		this._copy_of_class = params.copy_of_class || '';
+		this._time_left = params.time_left || -1;
 		//this._regen_rate = params.regen_rate || 0;
 		
 		this.f = params.f || 0; // Filter ID
 		
-		this.awake = 1; // For client sync
+		this.awake = 1; // For client sync // Magic property name
 		
 		//if ( this.s )
 		{
@@ -334,6 +336,7 @@ class sdLost extends sdEntity
 		dmg = Math.abs( dmg );
 		
 		let was_alive = ( this._hea > 0 );
+		
 		
 		this._hea -= dmg;
 		
@@ -399,7 +402,7 @@ class sdLost extends sdEntity
 
 			//this._matter = Math.min( this._matter_max, this._matter + GSPEED * 0.001 * this._matter_max / 80 );
 			//this.MatterGlow( 0.01, 30, GSPEED );
-			if ( this._phys_sleep <= 0 )
+			if ( this._phys_sleep <= 0 && this._time_left === -1 )
 			{
 				if ( sdWorld.is_server )
 				{
@@ -412,6 +415,10 @@ class sdLost extends sdEntity
 				if ( sdWorld.is_server )
 				{
 					this.awake = 1;
+					if ( this._time_left > 0 )
+					this._time_left = Math.max( 0, this._time_left - GSPEED );
+					if ( this._time_left === 0 )
+					this.remove();
 				}
 			}
 		}
@@ -443,7 +450,7 @@ class sdLost extends sdEntity
 	}
 	Draw( ctx, attached )
 	{
-		ctx.apply_shading = false;
+		//ctx.apply_shading = false;
 
 		/*ctx.drawImageFilterCache( sdLost.img_crystal_empty, - 16, - 16, 32,32 );
 		

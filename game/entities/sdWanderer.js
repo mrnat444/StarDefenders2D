@@ -1,175 +1,443 @@
-/*
+import sdShop from '../client/sdShop.js';
 
-	Class for wandering mobs in backgrounds. Basically an entity spawner.
-
-	Not finished. Probably needs entitiy despawner as well (for entities that can leave playable area and enter wandering mode)
-
-*/
-
-import sdEntity from './sdEntity.js';
 import sdWorld from '../sdWorld.js';
-import sdCube from './sdCube.js';
-import sdAsp from './sdAsp.js';
-import sdDrone from './sdDrone.js';
-import sdEnemyMech from './sdEnemyMech.js';
+import sdSound from '../sdSound.js';
+import sdEntity from './sdEntity.js';
+import sdEffect from './sdEffect.js';
+import sdCharacter from './sdCharacter.js';
 import sdBG from './sdBG.js';
+import sdWeather from './sdWeather.js';
+
+
+/*
+	Not a mob spawner, just an entity which draws a random (probably flying) mob in the background around players.
+	Made to give the background a little more life.
+*/
 
 class sdWanderer extends sdEntity
 {
 	static init_class()
 	{
-		sdWanderer.spawnable_options = 
-		[
-			[ 'sdVirus', {} ],
-			[ 'sdCube', { kind: 0 } ]
-		];
+		sdWanderer.wanderers = []; // For sdRenderer
+		sdWorld.entity_classes[ this.name ] = this; // Register for object spawn
+		
+		sdWanderer.MODEL_SD_HOVER = 0; // SD hover sprite
+		sdWanderer.MODEL_SD_FIGHTER_HOVER = 1; // SD fighter hover sprite
+		sdWanderer.MODEL_SD_TANK_HOVER = 2; // SD tank hover sprite
+		sdWanderer.MODEL_CUBE = 3; // The good old cyan cube
+		sdWanderer.MODEL_FALKOK_DRONE = 4; // Falkok drone
+		sdWanderer.MODEL_FALKOK_DRONE2 = 5; // Falkok 2nd drone
+		sdWanderer.MODEL_VELOX_MECH = 6; // Velox flying mech
+		sdWanderer.MODEL_ERTHAL_DRONE = 7; // Erthal drone
+		sdWanderer.MODEL_SARRONIAN_DRONE = 8; // Sarronian drone
+		sdWanderer.MODEL_SARRONIAN_DRONE2 = 9; // Sarronian 2nd drone - There's 5 of these. Let's keep it at 2 spawning for now.
+		sdWanderer.MODEL_SETR_DRONE = 10; // Setr drone
+		sdWanderer.MODEL_SETR_DESTROYER = 11; // Setr destroyer
+		sdWanderer.MODEL_TZYRG_DRONE = 12; // Tzyrg drone
+		sdWanderer.MODEL_TZYRG_DRONE2 = 13; // Tzyrg 2nd drone 
+		sdWanderer.MODEL_ZEKTARON_DREADNOUGHT = 14; // Zektaron dreadnought
+		sdWanderer.MODEL_FALKOK_HOVER = 15; // Falkok hover
 	}
-	
 	get hitbox_x1() { return 0; }
 	get hitbox_x2() { return 0; }
 	get hitbox_y1() { return 0; }
 	get hitbox_y2() { return 0; }
 	
-	get hard_collision() // For world geometry where players can walk
+	IsTargetable( by_entity=null, ignore_safe_areas=false )
+	{
+		return false; // Ignore bullets
+	}
+
+	get hard_collision()
 	{ return false; }
 	
-	IsBGEntity() // 0 for in-game entities, 1 for background entities, 2 is for moderator areas, 3 is for cables, 4 for task in-world interfaces, 5 for wandering around background entities. Should handle collisions separately
+	IsBGEntity()
 	{ return 5; }
 	
+	IsGlobalEntity()
+	{ return true; }
+	
+	get is_static() // Static world objects like walls, creation and destruction events are handled manually. Do this._update_version++ to update these
+	{ return false; }
+	
+	Damage( dmg, initiator=null ) // Not that much useful since it cannot be damaged by anything but matter it contains.
+	{
+		if ( !sdWorld.is_server )
+		return;
+	}
 	constructor( params )
 	{
-		this.far_entity = params.far_entity || 'sdVirus';
-		this.far_params = params.far_params || {};
+		super( params );
 		
-		this.approach_progress = 0;
+		this.model = params.model || Math.round( Math.random() * 2 );
 		
-		this._can_fly = false;
+		//this.x = 0;
+		//this.y = 0;
 		
-		this._fake_ent = sdWorld.entity_classes[ this.far_entity ]( this.far_params );
-
-		if ( this._fake_ent.is( sdCube ) ||
-			 this._fake_ent.is( sdAsp ) ||
-			 this._fake_ent.is( sdDrone ) ||
-			 this._fake_ent.is( sdEnemyMech ) )
-		{
-			this._can_fly = true;
-		}
-
-		this._direction_x = Math.random() - 0.5;
-		this._direction_y = Math.random() - 0.5;
+		//this.time_left = 30 * 60 * 60; // Time to move across the screen, in GSPEED units ( 30 GSPEED = 1 second )
 		
-		this._far_hitbox_x1 = this._fake_ent.hitbox_x1;
-		this._far_hitbox_x2 = this._fake_ent.hitbox_x2;
-		this._far_hitbox_y1 = this._fake_ent.hitbox_y1;
-		this._far_hitbox_y2 = this._fake_ent.hitbox_y2;
+		this.layer = params.layer || Math.round( Math.random() * 7 ); // Behind which skybox / darklands layer will this entity move?
 		
-		this._far_is_bg_entity = this._fake_ent._is_bg_entity;
+		this.side = params.side || 1;
 		
-		if ( sdWorld.is_server )
-		{
-			this.RemoveFakeEntity();
-		}
-		else
-		{
-			let prop = null;
-			
-			if ( typeof this._fake_ent[ 'side' ] !== 'undefined' )
-			prop = 'side';
-			
-			if ( typeof this._fake_ent[ '_side' ] !== 'undefined' )
-			prop = '_side';
-			
-			if ( typeof this._fake_ent[ 'act_x' ] !== 'undefined' )
-			prop = 'act_x';
-			
-			if ( prop !== null )
-			this._fake_ent[ prop ] = ( this._direction_x < 0 ) ? -1 : 1;
-		}
+		this._move_x = ( this.x < ( ( sdWorld.world_bounds.x1 + sdWorld.world_bounds.x2 ) / 2 ) ) ? 0.03 : -0.03; // Move from one border to another
+		this._move_y = 0 * ( 1 + this.layer );
 		
-		this.SetMethod( 'SpawnDetector', this.SpawnDetector ); // Here it used for "this" binding so method can be passed to collision logic
+		this._move_x *= Math.max( 1, Math.random() * 4 * ( 1 + this.layer ) );
+		//this._move_x = 1;
+		
+		//this._set_spawn = false; // Set it's coords to world borders when spawned
+		
+		//if ( this.model !== sdWanderer.MODEL_CUBE )
+		//this.side = ( Math.random() < 0.5 ) ? -1 : 1;
+		
+		//this.layer = params.layer || Math.round( Math.random() * 7 ); // Behind which skybox / darklands layer will this entity move?
+		
+		sdWanderer.wanderers.push( this );
 	}
-	
-	SpawnDetector( from_entity )
+	MeasureMatterCost()
 	{
-		let is_bg = from_entity._is_bg_entity;
-		if ( is_bg === 0 )
-		{
-			return true; // Always blocked by items and walls
-		}
-		if ( is_bg === 1 ) // Background walls
-		{
-			if ( from_entity.is( sdBG ) )
-			{
-				if ( from_entity.material === sdBG.MATERIAL_GROUND )
-				{
-					return false; // Allow spawns underground
-				}
-				else
-				{
-					return true;
-				}
-			}
-			else
-			{
-				return true; // Always blocked by unknown background items such as theatre
-			}
-		}
-		return false;
+		return 0; // Hack
 	}
-	
 	onThink( GSPEED ) // Class-specific, if needed
 	{
 		if ( sdWorld.is_server )
 		{
-			this.x += this._direction_x * ( 1 - this.approach_progress / 100 );
-			this.y += this._direction_y * ( 1 - this.approach_progress / 100 );
+			//this.time_left -= GSPEED;
 			
-			if ( this.x < sdWorld.world_bounds.x1 ||
-				 this.x > sdWorld.world_bounds.x2 ||
-				 this.y < sdWorld.world_bounds.y1 ||
-				 this.y > sdWorld.world_bounds.y2 )
+			/*if ( !this._set_spawn )
 			{
-				this.remove();
+				if ( this._move_x < 0 )
+				this.x = sdWorld.world_bounds.x2 + 64; // From right to left
+				else
+				this.x = sdWorld.world_bounds.x1 - 64; // From left to right
+			
+				this._set_spawn = true;
+			}*/
+			
+			this.x += this._move_x;
+			this.y += this._move_y;
+			
+			if ( this.model !== sdWanderer.MODEL_CUBE )
+			{
+				if ( this._move_x > 0 )
+				this.side = -1;
+				else
+				this.side = 1;
+			}
+			
+			/*if ( this.x > sdWorld.world_bounds.x2 )
+			{
+				if ( this._move_x > 0 )
+				this._move_x = 8;
+				else
+				this._move_x = -8;
+			}
+			else
+			if ( this.x < sdWorld.world_bounds.x1 )
+			{
+				if ( this._move_x > 0 )
+				this._move_x = 8;
+				else
+				this._move_x = -8;
 			}
 			else
 			{
-				let x1 = this.x + this._far_hitbox_x1;
-				let y1 = this.y + this._far_hitbox_y1;
-				let x2 = this.x + this._far_hitbox_x2;
-				let y2 = this.y + this._far_hitbox_y2;
-				
-				if ( !sdWorld.CheckWallExistsBox( x1, y1, x2, y2, null, null, null, SpawnDetector ) )
-				{
-					this.approach_progress += GSPEED;
-					
-					if ( this.approach_progress >= 100 )
-					{
-						this.remove();
-					}
-				}
+				if ( this._move_x > 0 )
+				this._move_x = 2;
 				else
-				{
-					this.approach_progress = Math.max( 0, this.approach_progress - GSPEED );
-				}
-			}
-		}
-	}
-	
-	RemoveFakeEntity() // Server does it instantly, but clients do it on removal
-	{
-		if ( this._fake_ent )
-		{
-			this._fake_ent.SetMethod( 'onRemove', this._fake_ent.onRemoveAsFakeEntity ); // Disable any removal logic
-			this._fake_ent.remove();
-			this._fake_ent._remove();
+				this._move_x = -2;
+			}*/
+		
 			
-			this._fake_ent = null;
+			//if ( this.time_left <= 0 )
+			if ( this._move_x > 0 && this.x > sdWorld.world_bounds.x2 + ( 1600 * 8 ) - ( 1600 * this.layer ) )
+			this.remove();
+		
+			if ( this._move_x <= 0 && this.x < sdWorld.world_bounds.x1 - ( 1600 * 8 ) + ( 1600 * this.layer ) )
+			this.remove();
 		}
 	}
 	
+	GetImageFromModel() // Find image for specific wanderer "models"
+	{
+
+		if ( this.model === sdWanderer.MODEL_SD_HOVER )
+		return 'hover_sprite';
+
+		if ( this.model === sdWanderer.MODEL_SD_FIGHTER_HOVER )
+		return 'f_hover_sprite';
+	
+		if ( this.model === sdWanderer.MODEL_SD_TANK_HOVER )
+		return 'tank_sprite';
+	
+		if ( this.model === sdWanderer.MODEL_CUBE )
+		return 'sdCube';
+	
+		if ( this.model === sdWanderer.MODEL_FALKOK_DRONE )
+		return 'drone_falkok_sprite2';
+	
+		if ( this.model === sdWanderer.MODEL_FALKOK_DRONE2 )
+		return 'drone_falkok_sprite3';
+	
+		if ( this.model === sdWanderer.MODEL_VELOX_MECH )
+		return 'fmech2_sheet';
+	
+		if ( this.model === sdWanderer.MODEL_ERTHAL_DRONE )
+		return 'drone_erthal';
+	
+		if ( this.model === sdWanderer.MODEL_SARRONIAN_DRONE )
+		return 'sarronian_drone1';
+	
+		if ( this.model === sdWanderer.MODEL_SARRONIAN_DRONE2 )
+		return 'sarronian_drone2';
+	
+		if ( this.model === sdWanderer.MODEL_SETR_DRONE )
+		return 'drone_setr_sprite';
+	
+		if ( this.model === sdWanderer.MODEL_SETR_DESTROYER )
+		return 'sdSetrDestroyer';
+	
+		if ( this.model === sdWanderer.MODEL_TZYRG_DRONE )
+		return 'drone_tzyrg_sprite';
+	
+		if ( this.model === sdWanderer.MODEL_TZYRG_DRONE2 )
+		return 'drone_tzyrg2_sprite';
+	
+		if ( this.model === sdWanderer.MODEL_ZEKTARON_DREADNOUGHT )
+		return 'zektaron_dreadnought';
+		
+		if ( this.model === sdWanderer.MODEL_FALKOK_HOVER )
+		return 'falkok_hover';
+	}
+	GetXOffsetFromModel() // X offset for the image to match a flying animation, for example
+	{
+
+		if ( this.model === sdWanderer.MODEL_SD_HOVER )
+		return 64;
+
+		if ( this.model === sdWanderer.MODEL_SD_FIGHTER_HOVER )
+		return 64;
+	
+		if ( this.model === sdWanderer.MODEL_SD_TANK_HOVER )
+		return 64;
+	
+		if ( this.model === sdWanderer.MODEL_CUBE )
+		return 0;
+	
+		if ( this.model === sdWanderer.MODEL_FALKOK_DRONE )
+		return 0;
+	
+		if ( this.model === sdWanderer.MODEL_FALKOK_DRONE2 )
+		return 0;
+	
+		if ( this.model === sdWanderer.MODEL_VELOX_MECH )
+		return 0;
+	
+		if ( this.model === sdWanderer.MODEL_ERTHAL_DRONE )
+		return 0;
+	
+		if ( this.model === sdWanderer.MODEL_SARRONIAN_DRONE )
+		return 0;
+	
+		if ( this.model === sdWanderer.MODEL_SARRONIAN_DRONE2 )
+		return 0;
+	
+		if ( this.model === sdWanderer.MODEL_SETR_DRONE )
+		return 0;
+	
+		if ( this.model === sdWanderer.MODEL_SETR_DESTROYER )
+		return 0;
+	
+		if ( this.model === sdWanderer.MODEL_TZYRG_DRONE )
+		return 0;
+	
+		if ( this.model === sdWanderer.MODEL_TZYRG_DRONE2 )
+		return 0;
+	
+		if ( this.model === sdWanderer.MODEL_ZEKTARON_DREADNOUGHT )
+		return 0;
+	
+		if ( this.model === sdWanderer.MODEL_FALKOK_HOVER )
+		return 64;
+	}
+	
+	GetYOffsetFromModel() // Y offset for the image to match a flying animation, for example
+	{
+
+		if ( this.model === sdWanderer.MODEL_SD_HOVER )
+		return 0;
+
+		if ( this.model === sdWanderer.MODEL_SD_FIGHTER_HOVER )
+		return 0;
+	
+		if ( this.model === sdWanderer.MODEL_SD_TANK_HOVER )
+		return 0;
+	
+		if ( this.model === sdWanderer.MODEL_CUBE )
+		return 0;
+	
+		if ( this.model === sdWanderer.MODEL_FALKOK_DRONE )
+		return 0;
+	
+		if ( this.model === sdWanderer.MODEL_FALKOK_DRONE2 )
+		return 0;
+	
+		if ( this.model === sdWanderer.MODEL_VELOX_MECH )
+		return 0;
+	
+		if ( this.model === sdWanderer.MODEL_ERTHAL_DRONE )
+		return 0;
+	
+		if ( this.model === sdWanderer.MODEL_SARRONIAN_DRONE )
+		return 0;
+	
+		if ( this.model === sdWanderer.MODEL_SARRONIAN_DRONE2 )
+		return 0;
+	
+		if ( this.model === sdWanderer.MODEL_SETR_DRONE )
+		return 0;
+	
+		if ( this.model === sdWanderer.MODEL_SETR_DESTROYER )
+		return 0;
+	
+		if ( this.model === sdWanderer.MODEL_TZYRG_DRONE )
+		return 0;
+	
+		if ( this.model === sdWanderer.MODEL_TZYRG_DRONE2 )
+		return 0;
+	
+		if ( this.model === sdWanderer.MODEL_ZEKTARON_DREADNOUGHT )
+		return 0;
+	
+		if ( this.model === sdWanderer.MODEL_FALKOK_HOVER )
+		return 0;
+	
+	}
+	
+	GetWidthFromModel() // Image width value for specific model
+	{
+
+		if ( this.model === sdWanderer.MODEL_SD_HOVER )
+		return 64;
+
+		if ( this.model === sdWanderer.MODEL_SD_FIGHTER_HOVER )
+		return 64;
+	
+		if ( this.model === sdWanderer.MODEL_SD_TANK_HOVER )
+		return 64;
+	
+		if ( this.model === sdWanderer.MODEL_CUBE )
+		return 32;
+	
+		if ( this.model === sdWanderer.MODEL_FALKOK_DRONE )
+		return 32;
+	
+		if ( this.model === sdWanderer.MODEL_FALKOK_DRONE2 )
+		return 48;
+	
+		if ( this.model === sdWanderer.MODEL_VELOX_MECH )
+		return 64;
+	
+		if ( this.model === sdWanderer.MODEL_ERTHAL_DRONE )
+		return 32;
+	
+		if ( this.model === sdWanderer.MODEL_SARRONIAN_DRONE )
+		return 48;
+	
+		if ( this.model === sdWanderer.MODEL_SARRONIAN_DRONE2 )
+		return 64;
+	
+		if ( this.model === sdWanderer.MODEL_SETR_DRONE )
+		return 32;
+	
+		if ( this.model === sdWanderer.MODEL_SETR_DESTROYER )
+		return 96;
+	
+		if ( this.model === sdWanderer.MODEL_TZYRG_DRONE )
+		return 32;
+	
+		if ( this.model === sdWanderer.MODEL_TZYRG_DRONE2 )
+		return 64;
+	
+		if ( this.model === sdWanderer.MODEL_ZEKTARON_DREADNOUGHT )
+		return 224;
+	
+		if ( this.model === sdWanderer.MODEL_FALKOK_HOVER )
+		return 64;
+
+		
+	}
+	
+	GetHeightFromModel() // Image height value for specific model
+	{
+
+		if ( this.model === sdWanderer.MODEL_SD_HOVER )
+		return 32;
+
+		if ( this.model === sdWanderer.MODEL_SD_FIGHTER_HOVER )
+		return 32;
+	
+		if ( this.model === sdWanderer.MODEL_SD_TANK_HOVER )
+		return 32;
+	
+		if ( this.model === sdWanderer.MODEL_CUBE )
+		return 32;
+	
+		if ( this.model === sdWanderer.MODEL_FALKOK_DRONE )
+		return 32;
+	
+		if ( this.model === sdWanderer.MODEL_FALKOK_DRONE2 )
+		return 48;
+	
+		if ( this.model === sdWanderer.MODEL_VELOX_MECH )
+		return 96;
+	
+		if ( this.model === sdWanderer.MODEL_ERTHAL_DRONE )
+		return 32;
+	
+		if ( this.model === sdWanderer.MODEL_SARRONIAN_DRONE )
+		return 48;
+	
+		if ( this.model === sdWanderer.MODEL_SARRONIAN_DRONE2 )
+		return 64;
+	
+		if ( this.model === sdWanderer.MODEL_SETR_DRONE )
+		return 32;
+	
+		if ( this.model === sdWanderer.MODEL_SETR_DESTROYER )
+		return 64;
+	
+		if ( this.model === sdWanderer.MODEL_TZYRG_DRONE )
+		return 32;
+	
+		if ( this.model === sdWanderer.MODEL_TZYRG_DRONE2 )
+		return 64;
+	
+		if ( this.model === sdWanderer.MODEL_ZEKTARON_DREADNOUGHT )
+		return 128;
+	
+		if ( this.model === sdWanderer.MODEL_FALKOK_HOVER )
+		return 32;
+		
+	}
+	
+	get title(){
+		return 'Wanderer';
+	}
+
 	onRemove() // Class-specific, if needed
 	{
-		this.RemoveFakeEntity();
+		this.onRemoveAsFakeEntity();
+	}
+	onRemoveAsFakeEntity()
+	{
+		let i = sdWanderer.wanderers.indexOf( this );
+		
+		if ( i !== -1 )
+		sdWanderer.wanderers.splice( i, 1 );
 	}
 }
+//sdWanderer.init_class();
+
 export default sdWanderer;

@@ -16,7 +16,7 @@ import sdWater from './sdWater.js';
 import sdCom from './sdCom.js';
 import sdBullet from './sdBullet.js';
 import sdBlock from './sdBlock.js';
-import { sdServerConfigFull } from '../server/sdServerConfig.js';
+// import { sdServerConfigFull } from '../server/sdServerConfig.js';
 // import sdCharacter from './sdCharacter.js';
 // import sdCube from './sdCube.js';
 // import sdBaseShieldingUnit from './sdBaseShieldingUnit.js';

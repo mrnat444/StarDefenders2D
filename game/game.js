@@ -1,5 +1,5 @@
 
-/* global globalThis, sdTranslationManager, sdWorld, sdRenderer, sd_events, sdShop, sdGun */
+/* global globalThis, sdTranslationManager, sdWorld, sdRenderer, sd_events, sdShop, sdGun, sdEntity, sdByteShifter, sdChat, sdSound, LZW, sdContextMenu, sdPathFinding, sdAdminPanel, sdDatabaseEditor, sdMotherShipStorageManager, sdCodeEditor, FakeCanvasContext, sdAtlasMaterial, sdCharacter */
 
 import sdTranslationManager from './client/sdTranslationManager.js';
 sdTranslationManager.init_class();
@@ -383,6 +383,7 @@ var socket = io( '/', {
 
 } );
 
+sdByteShifter.InstallDebugFeatures( socket );
 
 globalThis.socket_io_crashed = false;
 
@@ -450,6 +451,10 @@ let class_names = ( await ( await fetch( '/get_classes.txt' ) ).text() ).split('
 	import LZW from './server/LZW.js';
 	import LZUTF8 from './server/LZUTF8.js';
 	import sdSnapPack from './server/sdSnapPack.js';
+	import sdByteShifter from './server/sdByteShifter.js';
+
+	globalThis.sdByteShifter = sdByteShifter;
+	
 	
 	import sdPathFinding from './ai/sdPathFinding.js';
 
@@ -548,6 +553,86 @@ let class_names = ( await ( await fetch( '/get_classes.txt' ) ).text() ).split('
 	import sdBeacon from './entities/sdBeacon.js';
 	import sdPortal from './entities/sdPortal.js';*/
 
+	
+
+let enf_once = true;
+
+	globalThis.CATCH_ERRORS = false;
+	globalThis.EnforceChangeLog = function EnforceChangeLog( mat, property_to_enforce, value_as_string=true, only_catch_nans=false )
+	{
+		if ( enf_once )
+		{
+			enf_once = false;
+			console.warn('Enforcing method applied');
+		}
+
+		let enforced_prop = '_enfroce_' + property_to_enforce;
+		mat[ enforced_prop ] = mat[ property_to_enforce ];
+
+		mat[ property_to_enforce ] = null;
+
+		Object.defineProperty( mat, property_to_enforce, 
+		{
+			enumerable: mat.propertyIsEnumerable( property_to_enforce ),
+			get: function () { return mat[ enforced_prop ]; },
+			set: function ( v ) { 
+
+				if ( mat[ enforced_prop ] !== v )
+				{
+					if ( only_catch_nans )
+					{
+						if ( isNaN( v ) || v === undefined )
+						{
+							console.warn( 'NaN or undefined (',v,') assign attempt. Old value was ', mat[ enforced_prop ] );
+							throw new Error('NaN or undefined ('+v+') assign attempt. Old value was ' + mat[ enforced_prop ] );
+						}
+					}
+					else
+					{
+						if ( v === undefined )
+						{
+							throw new Error('undef set');
+						}
+
+						if ( value_as_string )
+						console.warn( mat.constructor.name,'.'+property_to_enforce+' = '+v );
+						else
+						console.warn( mat.constructor.name,'.'+property_to_enforce+' = ',v );
+
+					}
+					mat[ enforced_prop ] = v;
+				}
+
+			}
+		});
+
+		mat[ property_to_enforce+'_unenforce' ] = function()
+		{
+			let old_val = mat[ property_to_enforce ];
+			
+			delete mat[ property_to_enforce ];
+			
+			mat[ property_to_enforce ] = old_val;
+		};
+	};
+	
+	globalThis.getStackTrace = ()=>
+	{
+		if ( sdWorld.mobile )
+		return 581;
+	
+		var obj = {};
+		try
+		{
+			Error.captureStackTrace( obj, globalThis.getStackTrace ); // Webkit
+			return obj.stack;
+		}
+		catch ( e )
+		{
+			return ( new Error ).stack; // Firefox
+		}
+	};
+	
 
 	sdWorld.init_class();
 	sdAtlasMaterial.init_class();
@@ -663,84 +748,6 @@ let class_names = ( await ( await fetch( '/get_classes.txt' ) ).text() ).split('
 	globalThis.sdCodeEditor = sdCodeEditor;
 	
 	sdWorld.FinalizeClasses();
-
-let enf_once = true;
-
-	globalThis.CATCH_ERRORS = false;
-	globalThis.EnforceChangeLog = function EnforceChangeLog( mat, property_to_enforce, value_as_string=true, only_catch_nans=false )
-	{
-		if ( enf_once )
-		{
-			enf_once = false;
-			console.warn('Enforcing method applied');
-		}
-
-		let enforced_prop = '_enfroce_' + property_to_enforce;
-		mat[ enforced_prop ] = mat[ property_to_enforce ];
-
-		mat[ property_to_enforce ] = null;
-
-		Object.defineProperty( mat, property_to_enforce, 
-		{
-			enumerable: mat.propertyIsEnumerable( property_to_enforce ),
-			get: function () { return mat[ enforced_prop ]; },
-			set: function ( v ) { 
-
-				if ( mat[ enforced_prop ] !== v )
-				{
-					if ( only_catch_nans )
-					{
-						if ( isNaN( v ) || v === undefined )
-						{
-							console.warn( 'NaN or undefined (',v,') assign attempt. Old value was ', mat[ enforced_prop ] );
-							throw new Error('NaN or undefined ('+v+') assign attempt. Old value was ' + mat[ enforced_prop ] );
-						}
-					}
-					else
-					{
-						if ( v === undefined )
-						{
-							throw new Error('undef set');
-						}
-
-						if ( value_as_string )
-						console.warn( mat.constructor.name,'.'+property_to_enforce+' = '+v );
-						else
-						console.warn( mat.constructor.name,'.'+property_to_enforce+' = ',v );
-
-					}
-					mat[ enforced_prop ] = v;
-				}
-
-			}
-		});
-
-		mat[ property_to_enforce+'_unenforce' ] = function()
-		{
-			let old_val = mat[ property_to_enforce ];
-			
-			delete mat[ property_to_enforce ];
-			
-			mat[ property_to_enforce ] = old_val;
-		};
-	};
-	
-	globalThis.getStackTrace = ()=>
-	{
-		if ( sdWorld.mobile )
-		return 581;
-	
-		var obj = {};
-		try
-		{
-			Error.captureStackTrace( obj, globalThis.getStackTrace ); // Webkit
-			return obj.stack;
-		}
-		catch ( e )
-		{
-			return ( new Error ).stack; // Firefox
-		}
-	};
 	
 	globalThis.sd_events = [];
 
@@ -769,6 +776,9 @@ let enf_once = true;
 	SpawnConnection();
 
 	let messages_to_report_arrival = [];
+	let last_message_uid = -2; // For arrival reporting
+		
+	//let last_message_id = -1; // For out-of-order detection and ignoring of such messages
 	
 	function ClearWorld()
 	{
@@ -790,6 +800,11 @@ let enf_once = true;
 		
 		//trace( sdTask.tasks );
 		//setTimeout( ()=>{ trace( sdTask.tasks ) }, 1 );
+		
+		//last_message_id = -1;
+		last_message_uid = -2;
+		messages_to_report_arrival = [];
+		
 	}
 	globalThis.ClearWorld = ClearWorld;
 
@@ -819,11 +834,20 @@ let enf_once = true;
 			socket.volatile = socket;
 		}
 
-		socket.on('connect', () =>
+		let onConnect = ()=>
 		//socket.onConnect( error =>
 		{
+			if ( globalThis.connection_established )
+			{
+				trace( 'onConnect called extra time, igonred.' );
+				return;
+			}
+		
 			if ( sdWorld.is_singleplayer )
-			return;
+			{
+				trace( 'Connect event igonred due to single-player mode' );
+				return;
+			}
 		
 			socket.emit( 'my_url', window.location.href );
 			
@@ -832,13 +856,32 @@ let enf_once = true;
 			ClearWorld();
 
 			globalThis.connection_established = true;
-
-			//debugger;
-			/*window.onbeforeunload = ()=>
+		};
+		
+		socket.on('connect', onConnect );
+		
+		let eventless_connection_seeker = ()=> // Needed in case if game started on inactive tab - connect event just simply never arrives
+		{
+			if ( socket.connected )
 			{
-				socket.close();
-			};*/
-		});
+				if ( globalThis.connection_started )
+				if ( !globalThis.connection_established )
+				{
+					trace( '"connect" event was not fired but connection is open. Manually triggering onConnect' );
+
+					globalThis.players_online = '?';
+					globalThis.players_playing = '?';
+
+					onConnect();
+				}
+			
+				return;
+			}
+			
+			setTimeout( eventless_connection_seeker, 50 );
+		};
+		
+		eventless_connection_seeker();
 
 		socket.on('disconnect', () => 
 		//socket.onDisconnect( ()=>
@@ -885,7 +928,7 @@ let enf_once = true;
 			
 		});
 
-		let old_snapshot_entities = [];
+		//let old_snapshot_entities = [];
 		
 		let played_events = [];
 		let assumptions_event_types = {};
@@ -920,16 +963,22 @@ let enf_once = true;
 			}
 		});
 		
-		socket.on( 'RESv2', ( stuff_arr )=>
+		socket.on( 'RESv3', async ( stuff_arr )=>
 		{
 			if ( !SOCKET_IO_MODE )
 			stuff_arr = JSON.parse( LZW.lzw_decode( stuff_arr ) );
 			
+			// Prevent out of order messages, which happens
+			/*let message_id = stuff_arr[ 12 ];
+			if ( message_id <= last_message_id )
+			return;
+			else
+			last_message_id = message_id;*/
 			
-			let snapshot = sdSnapPack.Decompress( stuff_arr[ 0 ] );
+			let snapshot = JSON.parse( await LZW.lzw_decode_csapi( stuff_arr[ 0 ] ) );//sdSnapPack.Decompress( stuff_arr[ 0 ] );
 			let score = stuff_arr[ 1 ];
-			let leaders = JSON.parse( LZW.lzw_decode( stuff_arr[ 2 ] ) );
-			let sd_events = JSON.parse( LZW.lzw_decode( stuff_arr[ 3 ] ) );
+			let leaders = ( stuff_arr[ 2 ] === null ) ? null : JSON.parse( LZW.lzw_decode( stuff_arr[ 2 ] ) );
+			let sd_events = ( stuff_arr[ 3 ] === 0 ) ? [] : JSON.parse( await LZW.lzw_decode_csapi( stuff_arr[ 3 ] ) );
 
 			let _force_add_sx = stuff_arr[ 4 ];
 			let _force_add_sy = stuff_arr[ 5 ];
@@ -941,44 +990,239 @@ let enf_once = true;
 				sdWorld.last_slowest_class = stuff_arr[ 8 ] || '';
 			}
 			
-			let message_id_to_report = ( stuff_arr[ 9 ] === undefined ) ? -1 : stuff_arr[ 9 ];
+			let message_id_to_report = /*( stuff_arr[ 9 ] === undefined ) ? -1 : */stuff_arr[ 9 ];
 			
 			sdRenderer.line_of_sight_mode = stuff_arr[ 10 ] || 0;
 			
-			if ( message_id_to_report !== -1 )
-			messages_to_report_arrival.push( message_id_to_report );
+			let sent_messages_confirmed_ids = stuff_arr[ 11 ] || [];
+			for ( let i = 0; i < sent_messages_confirmed_ids.length; i++ )
+			{
+				let id = messages_to_report_arrival.indexOf( sent_messages_confirmed_ids[ i ] );
+				if ( id !== -1 )
+				{
+					messages_to_report_arrival.splice( id, 1 );
+				}
+			}
+			
+			if ( sdByteShifter.allow_weirdly_ordered_messages_to_be_used_as_reference || last_message_uid < message_id_to_report )
+			{
+				last_message_uid = message_id_to_report;
+				
+				messages_to_report_arrival.push( message_id_to_report );
+			}
+			
+			let frame = globalThis.GetFrame();
 
 			// snapshot
 			sdWorld.unresolved_entity_pointers = [];
 			{
-				let new_snapshot_entities = [];
+				//let y_updated = false;
+					
+				let SetEntProp = ( ent, prop, v )=>
+				{
+					if ( typeof v === 'object' && v !== null && !( v instanceof Array ) && v._net_id !== undefined )
+					{
+						let ent2 = sdEntity.entities_by_net_id_cache_map.get( v._net_id );
+						
+						if ( ent2 )
+						v = ent2;
+						else
+						{
+							sdWorld.unresolved_entity_pointers.push([ ent, prop, v._class, v._net_id ]);
+							return;
+						}
+					}
+					
+					/*if ( ent.is( sdGun ) )
+					{
+						trace( prop+': '+ent[ prop ]+' -> '+v );
+					}*/
+				
+					ent[ prop ] = v;
+					
+					/*if ( prop === 'y' )
+					{
+						sdEntity.TrackPotentialYRest( ent );
+					}*/
+				};
+				
+				for ( let i = 0; i < snapshot.length; i++ )
+				{
+					let arr = snapshot[ i ];
+					
+					let _net_id = arr[ 0 ];
+					let properties_or_class_or_deletion_info = arr[ 1 ];
+					
+					let ent = sdEntity.entities_by_net_id_cache_map.get( _net_id );
+					
+					if ( ent )
+					if ( ent._is_being_removed )
+					continue;
+			
+					let y_updated = false;
+					
+					if ( typeof properties_or_class_or_deletion_info === 'number' || typeof properties_or_class_or_deletion_info === 'string' )
+					{
+						let class_id_or_deletion_info = properties_or_class_or_deletion_info;
+						
+						if ( class_id_or_deletion_info >= 0 || typeof properties_or_class_or_deletion_info === 'string' )
+						{
+							let class_info = ( class_id_or_deletion_info + '' ).split( '/' );
+							
+							let entity_class = sdWorld.entity_classes_array[ ~~class_info[ 0 ] ];
+							
+							if ( entity_class.name === 'sdBone' )
+							{
+								throw new Error();
+							}
+							
+							if ( !ent )
+							{
+								let params = {
+									_net_id:_net_id, 
+									x:0, 
+									y:0
+								};
+								
+								for ( let i = 1; i < class_info.length; i++ )
+								{
+									let parts = class_info[ i ].split('=');
+									let prop = sdEntity.properties_important_upon_creation[ ~~parts[0] ];
+									let value = ~~parts[1];
+									params[ prop ] = value;
+								}
+								
+								/*for ( let i = 0; i < sdEntity.properties_important_upon_creation.length; i++ )
+								{
+									let prop = sdEntity.properties_important_upon_creation[ i ];
+
+									if ( typeof snapshot[ prop ] !== 'undefined' )
+									params[ prop ] = snapshot[ prop ];
+								}
+								*/
+							   
+								
+							   
+								ent = new entity_class( params );
+								sdEntity.entities.push( ent );
+							}
+							
+							//let props = ent.GetSnapshot( -2, false, null );
+							//let props = sdByteShifter.GetSyncSnapshot( ent );
+							let props = ent.GetSnapshot( frame, false, null, false );
+							let props_keys = Object.keys( props );
+							
+							/*let recreate_params = null;
+							
+							for ( let i = 0; i < sdEntity.properties_important_upon_creation.length; i++ )
+							{
+								let prop = sdEntity.properties_important_upon_creation[ i ];
+								if ( props.hasOwnProperty( prop ) )
+								{
+									if ( recreate_params === null )
+									recreate_params = {};
+								
+									recreate_params[ prop ] = 
+								}
+							}*/
+							
+							for ( let i = 0; i < props_keys.length; i++ )
+							SetEntProp( ent, props_keys[ i ], arr[ i + 2 ] );
+							//ent[ props_keys[ i ] ] = arr[ i + 2 ];
+						
+							ent.onSnapshotApplied();
+		
+							//ent.UpdateHitbox();
+							
+							y_updated = true;
+
+						}
+						else
+						{
+							if ( !ent )
+							{
+								// Should not really happen unless server sends data twice, in that case that is a normal to ignore it
+								continue;
+							}
+							
+							if ( class_id_or_deletion_info === -1 )
+							{
+								// remove
+								ent.remove();
+								ent._broken = false;
+							}
+							else
+							if ( class_id_or_deletion_info === -2 )
+							{
+								// remove with broken property
+								ent.remove();
+								ent._broken = true;
+							}
+						}
+					}
+					else
+					{
+						let property_indices = properties_or_class_or_deletion_info;
+						
+						if ( !ent )
+						{
+							continue;
+						}
+						else
+						//if ( ent.isSnapshotDecodingAllowed === sdEntity.prototype.isSnapshotDecodingAllowed || ent.isSnapshotDecodingAllowed( snapshot ) )
+						{
+							//let props = sdByteShifter.GetSyncSnapshot( ent );
+							let props = ent.GetSnapshot( frame, false, null, false );
+							let props_keys = Object.keys( props );
+							
+							
+							for ( let i = 0; i < property_indices.length; i++ )
+							{
+								let prop = props_keys[ property_indices[ i ] ];
+								let value = arr[ i + 2 ];
+								
+								props[ prop ] = value;
+								
+								//if ( prop !== 'x' && prop !== 'y'
+								//SetEntProp( ent, prop, value );
+								
+								if ( prop === 'y' )
+								y_updated = true;
+							}
+							
+							/*if ( ent.is( sdGun ) )
+							if ( ent.class === sdGun.CLASS_LOST_CONVERTER )
+							{
+								trace( 'ApplySnapshot', ent.x, ent.sx, ent._held_by, ent.held_by_net_id, ent.held_by_class );
+								//trace( 'ApplySnapshot', ( ent.isSnapshotDecodingAllowed === sdEntity.prototype.isSnapshotDecodingAllowed || ent.isSnapshotDecodingAllowed( props ) ), props );
+							}*/
+							
+							if ( ent.isSnapshotDecodingAllowed === sdEntity.prototype.isSnapshotDecodingAllowed || ent.isSnapshotDecodingAllowed( props ) )
+							ent.ApplySnapshot( props );
+						}
+					}
+					
+					if ( ent )
+					if ( !ent._is_being_removed )
+					{
+						if ( !ent.IsGlobalEntity() )
+						ent.SetHiberState( sdEntity.HIBERSTATE_ACTIVE );
+
+						ent._hitbox_last_update = 0;
+						ent.UpdateHitbox();
+		
+						if ( y_updated )
+						sdEntity.TrackPotentialYRest( ent );
+					}
+				}
+					
+				/*let new_snapshot_entities = [];
 				for ( var i = 0; i < snapshot.length; i++ )
 				{
-					/*if ( snapshot[ i ]._is_being_removed )
-					{
-						if ( snapshot[ i ]._class === undefined )
-						trace( snapshot[ i ]._class + ' is being removed', snapshot[ i ] )
-					}
-					else*/
-					{
-						//if ( snapshot[ i ]._class === undefined )
-						//snapshot[ i ]._class = 'auto';
- 
-					
-						let ent = sdEntity.GetObjectFromSnapshot( snapshot[ i ] );
+					let ent = sdEntity.GetObjectFromSnapshot( snapshot[ i ] );
 
-						/*if ( ent )
-						if ( ent._is_being_removed )
-						{
-							if ( ent._hiberstate !== sdEntity.HIBERSTATE_REMOVED )
-							{
-								ent._is_being_removed = false; // Nothing bad will happen? Trying to prevent missing blocks bug // It probably can't be solved here
-							}
-						}*/
-
-						if ( ent )
-						new_snapshot_entities.push( ent );
-					}
+					if ( ent )
+					new_snapshot_entities.push( ent );
 				}
 
 				for ( var i = 0; i < old_snapshot_entities.length; i++ )
@@ -989,7 +1233,7 @@ let enf_once = true;
 						old_snapshot_entities[ i ].remove();
 					}
 				}
-				old_snapshot_entities = new_snapshot_entities;
+				old_snapshot_entities = new_snapshot_entities;*/
 
 				if ( sdWorld.my_entity === null || sdWorld.my_entity_net_id !== sdWorld.my_entity._net_id )
 				sdWorld.ResolveMyEntityByNetId();
@@ -1082,6 +1326,8 @@ let enf_once = true;
 				{
 					if ( sdWorld.my_entity )
 					{
+						//sdWorld.my_entity.x -= params[ 0 ];
+						//sdWorld.my_entity.y -= params[ 1 ];
 						sdWorld.my_entity.x = params[ 0 ];
 						sdWorld.my_entity.y = params[ 1 ];
 						sdWorld.my_entity.sx = params[ 2 ];
@@ -1283,11 +1529,22 @@ let enf_once = true;
 	
 	//let last_sent_snapshot = [];
 	let frame = 0;
+	//let last_gcso_id = 0;
+	//let my_message_id = 0;
 	const logic = ()=>
 	{
 		try
 		{
-			sdWorld.HandleWorldLogic( frame );
+			try
+			{
+				sdWorld.HandleWorldLogic( frame );
+			}
+			catch( e )
+			{
+				sdRenderer.service_mesage_until = sdWorld.time + 5000;
+				sdRenderer.service_mesage = 'World simulation logic error! ' + e;
+				debugger;
+			}
 
 			const isTransportWritable = socket.io.engine &&
 										socket.io.engine.transport &&
@@ -1355,6 +1612,8 @@ let enf_once = true;
 						}
 					}
 					
+					//trace( messages_to_report_arrival.slice() ); // Seems to be always in order
+					
 					new_snapshot = [ 
 						Math.round( sdWorld.my_entity.look_x ), // 0
 						Math.round( sdWorld.my_entity.look_y ), // 1
@@ -1364,50 +1623,73 @@ let enf_once = true;
 						Math.round( sdWorld.my_entity.x * 100 ) / 100, // 5
 						Math.round( sdWorld.my_entity.y * 100 ) / 100, // 6
 						( sdWorld.my_entity.stands && sdWorld.my_entity._stands_on ) ? sdWorld.my_entity._stands_on._net_id : -1, // 7
+						
+						//last_message_uid,//messages_to_report_arrival, // 8
 						messages_to_report_arrival, // 8
+						
 						look_at_net_id, // 9
 						look_at_relative_to_direct_angle // 10
 					];
 					
 					//socket.volatile.emit( 'M', new_snapshot );
 
-					if ( messages_to_report_arrival.length > 0 )
-					messages_to_report_arrival = [];
+					//if ( messages_to_report_arrival.length > 0 )
+					//messages_to_report_arrival = [];
 				}
 				
 				if ( sdWorld.my_inputs_and_gspeeds.length > 0 )
 				{
 					//trace( [ 'GSCO', sdWorld.my_inputs_and_gspeeds.slice() ] );
 					
-					sd_events.push( [ 'GSCO', sdWorld.my_inputs_and_gspeeds.slice(), new_snapshot ] );
+					
+					// Prevents keys being stuck on server due to lags
+					let held_key_ids = [];
+					
+					for ( let i in sdWorld.my_key_states.key_states )
+					if ( sdWorld.my_key_states.key_states[ i ] )
+					held_key_ids.push( sdKeyStates.default_state_keys.indexOf( i ) );
+					
+					sd_events.push( [ 'GSCO', sdWorld.my_inputs_and_gspeeds.slice(), new_snapshot, held_key_ids ] );
+					//sd_events.push( [ 'GSCO', sdWorld.my_inputs_and_gspeeds.slice(), new_snapshot, last_gcso_id++ ] );
 					sdWorld.my_inputs_and_gspeeds.length = 0;
 				}
 
 				if ( sd_events.length > 0 )
 				{
-					
-					
 					if ( sd_events.length > 32 )
 					{
+						if ( Math.random() < 1 - sdByteShifter.simulate_packet_loss_percentage )
 						socket.emit( 'Kv2', sd_events.slice( 0, 32 ) );
+					
 						sd_events = sd_events.slice( 32 );
 						globalThis.sd_events = sd_events; // Just in case?
 						console.log('Too many events to server are being sent (' + sd_events.length + ') - this might cause input delay on server-side');
 					}
 					else
 					{
-						socket.emit( 'Kv2', sd_events );
+						if ( Math.random() < 1 - sdByteShifter.simulate_packet_loss_percentage )
+						socket.emit( 'Kv2', sd_events.slice() );
+					
 						sd_events.length = 0;
 					}
 				}
 			}
 
-			sdRenderer.Render( frame );
+			try
+			{
+				sdRenderer.Render( frame );
+			}
+			catch( e )
+			{
+				sdRenderer.service_mesage_until = sdWorld.time + 5000;
+				sdRenderer.service_mesage = 'Render logic error! ' + e;
+				debugger;
+			}
 		}
 		catch( e )
 		{
 			sdRenderer.service_mesage_until = sdWorld.time + 5000;
-			sdRenderer.service_mesage = 'Game/render logic error! ' + e;
+			sdRenderer.service_mesage = 'Overall game logic error! ' + e;
 			debugger;
 		}
 		
@@ -1421,6 +1703,236 @@ let enf_once = true;
 	window.requestAnimationFrame( logic );
 	
 	globalThis.frame_by_frame = false;
+	
+	globalThis.DrawPreview = ( hovered_preview, forced_time, settings_container, ctx, start_btn, inputs_hash, cursor_x, cursor_y, inputs, format, hovered_color )=>
+	{
+		if ( hovered_preview )
+			sdWorld.time = forced_time;
+		
+		//sdWorld.time = 0; // Hack
+		sdWorld.GSPEED = 0.5; // Without it GSPEED may be 0 at time, which will cause ragdoll to crumble
+
+		//if ( !draw_once )
+		//return;
+
+		settings_container.style.transform = 'scale(' + Math.min( document.body.clientWidth / 1260, Math.min( document.body.clientHeight / 830, 1 ) ) + ')';
+
+		if ( !ctx.drawImageFilterCache )
+		{
+			if ( typeof sdRenderer !== 'undefined' )
+			if ( typeof sdWorld !== 'undefined' )
+			if ( typeof sdCharacter !== 'undefined' )
+			if ( typeof sdGun !== 'undefined' )
+			sdRenderer.AddCacheDrawMethod( ctx );
+		}
+
+		if ( !ctx.drawImageFilterCache )
+		return;
+
+		if ( globalThis.socket_io_crashed && !socket.connected )
+		start_btn.value = globalThis.socket_io_crashed;
+		else
+		{
+			let str = T('Play with {1} other players ({2} online)');
+			//start_btn.value = 'Play with ' + format( globalThis.players_playing ) + ' other players (' + format( globalThis.players_online ) + ' online)';
+			str = str.split('{1}').join( format( globalThis.players_playing ) );
+			str = str.split('{2}').join( format( globalThis.players_online ) );
+			start_btn.value = str;
+		}
+
+		ctx.fillStyle = '#7b3219';
+		//ctx.fillStyle = '#111111';
+		ctx.fillRect( 0, 0, 128, 128 );
+
+		ctx.save();
+
+		let ent;
+
+		let preferred_entity = sdWorld.ConvertPlayerDescriptionToEntity( globalThis.GetPlayerSettings() );
+
+		if ( sdWorld.allowed_player_classes.indexOf( preferred_entity ) === -1 )
+		ent = new sdCharacter({ x:1, y:0 });
+		else
+		ent = new sdWorld.entity_classes[ preferred_entity ]({ x:1, y:0 });
+
+
+		let ent2;
+		let ent3;
+		{
+			ent3 = new sdGun({ x:0, y:0, class: sdGun.CLASS_PISTOL });
+			ent._inventory[ 1 ] = ent3;
+			ent3._held_by = ent;
+		}
+
+		if ( inputs_hash[ 'start_with1' ].el.checked )
+		{
+			ent2 = new sdGun({ x:0, y:0, class: sdGun.CLASS_SWORD });
+			ent._inventory[ 0 ] = ent2;
+			ent2._held_by = ent;
+		}
+		else
+		/*if ( inputs_hash[ 'start_with1' ].el.checked )
+		{
+			ent2 = new sdGun({ x:0, y:0, class: sdGun.CLASS_PISTOL });
+			ent._inventory[ 1 ] = ent2;
+			ent2._held_by = ent;
+			}
+		else*/
+		if ( inputs_hash[ 'start_with2' ].el.checked )
+		{
+			ent2 = new sdGun({ x:0, y:0, class: sdGun.CLASS_SHOVEL });
+			ent._inventory[ 0 ] = ent2;
+			ent2._held_by = ent;
+		}	
+
+
+		//if ( !inputs_hash[ 'start_with2' ].el.checked && !inputs_hash[ 'start_with3' ].el.checked )
+		ent.gun_slot = ( sdWorld.time % 4000 ) < 2000 ? 0 : 1;
+
+		//ent._an = Math.PI / 2;
+		ent.look_x = -1000;
+		ent.look_y = 0;
+		ent.stands = true;
+		ent.act_x = ( ( sdWorld.time ) % 4000 > 3000 ) ? -1 : 0;
+		ent._anim_walk = ( sdWorld.time / 50 ) % 10;
+
+		ent.sd_filter = sdWorld.ConvertPlayerDescriptionToSDFilter_v2( globalThis.GetPlayerSettings() );
+		ent.helmet = sdWorld.ConvertPlayerDescriptionToHelmet( globalThis.GetPlayerSettings() );
+		ent.body = sdWorld.ConvertPlayerDescriptionToBody( globalThis.GetPlayerSettings() );
+		ent.legs = sdWorld.ConvertPlayerDescriptionToLegs( globalThis.GetPlayerSettings() );
+
+		if ( sdWorld.time % 5000 < 500 )
+		ent.pain_anim = 10 / ( sdWorld.time % 5000 ) / 500;
+
+		if ( ( sdWorld.time + 500 ) % 2000 < 250 )
+		{
+			ent.fire_anim = Math.max( 0, 15 - ( ( sdWorld.time + 500 ) % 2000 ) / 250 );// 5 / ( ( sdWorld.time + 500 ) % 2000 ) / 250;
+
+			/*
+			//if ( !inputs_hash[ 'start_with2' ].el.checked && !inputs_hash[ 'start_with3' ].el.checked )
+			if ( ent.gun_slot === 1 )
+			ent2.muzzle = 5 / ( ( sdWorld.time + 500 ) % 2000 ) / 250;*/
+		}
+
+		ctx.scale( 4,4 );
+		ctx.translate( 16, 14 );
+
+		let real_net_id = ent._net_id;
+		ent._net_id = 0;
+		{
+			sdShop.isDrawing = true;
+			ent.Draw( ctx );
+			
+			/*let old_values = globalThis.snap || [];
+			let new_values = Object.values( ent );
+			for ( let i = 0; i < new_values.length; i++ )
+			{
+				if ( new_values[ i ] !== old_values[ i ] )
+				if ( typeof new_values[ i ] !== 'object' )
+				if ( Object.keys( ent )[ i ] !== 'biometry' )
+				{
+					trace( Object.keys( ent )[ i ] + ' changed from ' + old_values[ i ] + ' to ' + new_values[ i ] );
+				}
+			}
+			globalThis.snap = new_values;*/
+			
+			sdShop.isDrawing = false;
+		}
+		ent._net_id = real_net_id;
+
+		if ( ent._ragdoll )
+		{
+			ent._ragdoll.Delete( true );
+		}
+
+		ent.remove();
+		ent._remove();
+
+		ent2.remove();
+		ent2._remove();
+
+		ent3.remove();
+		ent3._remove();
+
+		ctx.restore();
+
+		if ( hovered_preview )
+		{
+			var p = ctx.getImageData( cursor_x, cursor_y, 1, 1 ).data; 
+			var hex = "#" + ( "000000" + sdWorld.ColorArrayToHex( [ p[0], p[1], p[2] ] ) ).slice( -6 );
+
+			hovered_color = [ p[0], p[1], p[2] ];
+
+			let reset = true;
+
+			for ( let i = 0; i < inputs.length; i++ )
+			if ( inputs[ i ].el.type === 'color' )
+			{
+				if ( inputs[ i ].el.value === hex )
+				{
+					reset = false;
+					break;
+				}
+			}
+
+			if ( reset )
+			hovered_color = null;
+		}
+
+		if ( hovered_color )
+		{
+			let image_data = ctx.getImageData( 0, 0, 128, 128 );
+			let image_data_new = ctx.getImageData( 0, 0, 128, 128 );
+
+			let left = -1 * 4;
+			let right = 1 * 4;
+			let up = -128 * 4;
+			let down = 128 * 4;
+
+			function ColorMatches( i )
+			{
+				if ( image_data.data[ i   ] === hovered_color[ 0 ] )
+				if ( image_data.data[ i+1 ] === hovered_color[ 1 ] )
+				if ( image_data.data[ i+2 ] === hovered_color[ 2 ] )
+				return true;
+
+				return false;
+			}
+
+			let t = Date.now();
+
+			let br = ~~( 127 + Math.sin( t / 100 ) * 127 );
+
+			function Fill( i )
+			{
+				//if ( ( t / 100 + i / 4 ) % 10 < 5 )
+				{
+					image_data_new.data[ i   ] = br;
+					image_data_new.data[ i+1 ] = br;
+					image_data_new.data[ i+2 ] = br;
+				}
+			}
+
+			for ( let i = 0; i < image_data.data.length; i += 4 )
+			{
+				if ( ColorMatches( i ) )
+				{
+					if ( !ColorMatches( i + right ) )
+					Fill( i + right );
+					if ( !ColorMatches( i + left ) )
+					Fill( i + left );
+					if ( !ColorMatches( i + up ) )
+					Fill( i + up );
+					if ( !ColorMatches( i + down ) )
+					Fill( i + down );
+				}
+			}
+
+			ctx.putImageData( image_data_new, 0, 0, 0, 0, 128, 128 );
+		}
+
+		//draw_once = false;
+	};
 
 	let key_states = new sdKeyStates();
 	sdWorld.my_key_states = key_states;
@@ -1771,4 +2283,4 @@ let enf_once = true;
 	if( userAgent[0] === "Gecko" && userAgent[1] === BROWSER_GECKO )
 	window.onwheel = window.onmousewheel;
 	
-	socket.open();
+	socket.open(); // Same as socket.connect() it seems

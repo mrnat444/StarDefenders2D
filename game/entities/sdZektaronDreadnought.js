@@ -54,7 +54,7 @@ class sdZektaronDreadnought extends sdEntity
 		
 		this._regen_timeout = 0;
 		
-		this._hmax = 64000; // 48000
+		this._hmax = 60000; // 48000
 		this.hea = this._hmax;
 
 		this._ai_team = 4;
@@ -282,6 +282,7 @@ class sdZektaronDreadnought extends sdEntity
 		
 		let e = sdEntity.GetRandomEntity();
 		
+		if ( e )
 		if ( sdCom.com_faction_attack_classes.indexOf( e.GetClass() ) !== -1 )
 		if ( e.IsVisible( this ) )
 		if ( e.IsTargetable( this ) )

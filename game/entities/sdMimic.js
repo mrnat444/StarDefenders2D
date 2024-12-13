@@ -143,11 +143,13 @@ class sdMimic extends sdEntity
 		
 		this._speak_id = -1; // Required by speak effects // last voice message
 		
+		this._hibernation_check_timer = 30;
+		
 		//this.side = 1;
 		
 		this.d3d = 0;
 		this.d = null; // Disguise
-		this.title = null;
+		this.title_str = null;
 		this.f = 'none';
 		/*this.hue = 0;
 		this.br = 100;*/
@@ -204,6 +206,11 @@ class sdMimic extends sdEntity
 	GetBleedEffectFilter()
 	{
 		return '';
+	}
+	
+	CanBuryIntoBlocks()
+	{
+		return 3; // 0 = no blocks, 1 = natural blocks, 2 = corruption, 3 = flesh blocks	
 	}
 	
 	
@@ -405,7 +412,7 @@ class sdMimic extends sdEntity
 								{
 									this.d3d = ent.DrawIn3D();
 									this.d = d;
-									this.title = ent.title || null;
+									this.title_str = ent.title_str || null;
 									this.sh = 1;
 
 									this.x1 = ent._hitbox_x1;
@@ -426,7 +433,7 @@ class sdMimic extends sdEntity
 										else
 										this.f = sdWorld.GetCrystalHue( ent.matter_max );
 
-										this.title += ' ( ' + (~~(ent.matter)) + ' / ' + ent.matter_max + ' )';
+										this.title_str += ' ( ' + (~~(ent.matter)) + ' / ' + ent.matter_max + ' )';
 										
 										this.sh = 0;
 									}
@@ -594,17 +601,29 @@ class sdMimic extends sdEntity
 				}
 			}
 		}
+		
+		if ( sdWorld.is_server )
+		{
+			if ( this._last_bite < sdWorld.time - ( 1000 * 60 * 3 ) ) // 3 minutes since last attack?
+			{
+				this._hibernation_check_timer -= GSPEED;
+				
+				if ( this._hibernation_check_timer < 0 )
+				{
+					this._hibernation_check_timer = 30 * 30; // Check if hibernation is possible every 30 seconds
++					this.AttemptBlockBurying(); // Attempt to hibernate inside nearby blocks
+				}
+			}
+		}
+	}
+	get title()
+	{
+		return ( this.d === null ) ? "Mimic" : ( this.title_str !== null ) ? this.title_str : '';
 	}
 	DrawHUD( ctx, attached ) // foreground layer
 	{
 		if ( this.death_anim === 0 )
 		{
-			if ( this.d === null )
-			{
-				sdEntity.Tooltip( ctx, "Mimic" );
-			}
-			else
-			if ( this.title !== null )
 			sdEntity.Tooltip( ctx, this.title );
 		}
 	}

@@ -80,6 +80,24 @@ class sdWater extends sdEntity
 	get is_static() // Static world objects like walls, creation and destruction events are handled manually. Do this._update_version++ to update these
 	{ return true; }
 	
+	get title()
+	{
+		if ( this.type === sdWater.TYPE_WATER )
+		return 'Water';
+		if ( this.type === sdWater.TYPE_ACID )
+		return 'Acid';
+		if ( this.type === sdWater.TYPE_LAVA )
+		return 'Lava';
+		if ( this.type === sdWater.TYPE_TOXIC_GAS )
+		return 'Toxic gas';
+		if ( this.type === sdWater.TYPE_ESSENCE )
+		return 'Essence';
+		if ( this.type === sdWater.TYPE_ANTIMATTER )
+		return 'Anti-matter';
+	
+		return 'Liquid ' + this.type;
+	}
+	
 	constructor( params )
 	{
 		if ( params.tag )
@@ -462,7 +480,7 @@ class sdWater extends sdEntity
 						if ( !sdWorld.is_server || sdWorld.is_singleplayer )
 						{
 							if ( this.type === sdWater.TYPE_LAVA )
-							if ( !e.isWaterDamageResistant() )
+							if ( !e.isFireAndAcidDamageResistant() )
 							{
 								if ( effect_once )
 								{
@@ -495,7 +513,7 @@ class sdWater extends sdEntity
 							}
 							if ( sdWater.damage_by_type[ this.type ] !== 0 )
 							if ( this.type === sdWater.TYPE_LAVA || ( this.type === sdWater.TYPE_ACID && e_is_organic ) )
-							if ( !e.isWaterDamageResistant() )
+							if ( !e.isFireAndAcidDamageResistant() )
 							//if ( e.Damage !== sdEntity.prototype.Damage )
 							{
 								e.DamageWithEffect( sdWater.damage_by_type[ this.type ] * GSPEED ); 

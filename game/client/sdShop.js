@@ -33,6 +33,8 @@ class sdShop
 		sdShop.options = [];
 		sdShop.options_snappack = null; // Generated on very first connection. It means shop items can not be changed after world initialization, but not only because of that (shop data is sent only once per connection)
 		
+		sdShop.category_godmode_permission_cache = new Map(); // String => true/false
+		
 		sdShop.scroll_y = 0;
 		sdShop.scroll_y_target = 0;
 		
@@ -81,8 +83,10 @@ class sdShop
 			sdShop.options.push({ _class: null, image: 'com_red', _category:'root', _godmode_only: true, _opens_category:'Admin tools' }); // Cost of Infinity is what actually prevents items here from being accessible to non-in-godmode-admins
 
 			//if ( globalThis.isWin )
+			sdShop.options.push({ _class: 'sdGun', class: sdGun.CLASS_LOST_CONVERTER, _category:'root', _godmode_only: true, _opens_category:'Development tests guns' });
 			sdShop.options.push({ _class: 'sdVirus', _category:'root', _godmode_only: true, _opens_category:'Development tests' });
-			sdShop.options.push({ _class: 'sdGun', class: sdGun.CLASS_FALKOK_RIFLE, _category:'root', _godmode_only: true, _opens_category:'Humanoid Spawner' });
+			sdShop.options.push({ _class: 'sdCrystal', tag:'deep', matter_max:5120, _category:'root', _godmode_only: true, _opens_category:'Development tests crystals' });
+			sdShop.options.push({ _class: 'sdCharacter', _category:'root', _godmode_only: true, _opens_category:'Humanoid Spawner' });
 			sdShop.options.push({ _class: 'sdFactionSpawner', _category:'root', _godmode_only: true, _opens_category:'Faction outpost tools' });
 			
 			//
@@ -92,11 +96,6 @@ class sdShop
 			sdShop.options.push({ _class: 'sdTheatre', _category:'Other' });
 			for ( let hue = 0; hue < 360; hue += 30 )
 			sdShop.options.push({ _class: 'sdGrass', variation: 3, hue:hue, _category:'Other' });
-			/*for ( let hue = 0; hue < 360; hue += 30 )
-			sdShop.options.push({ _class: 'sdGrass', variation: 4, hue:hue, _category:'Other' });*/
-
-			//for ( let hue = 0; hue < 360; hue += 30 )
-			//sdShop.options.push({ _class: 'sdGrass', variation: 6, hue:hue, _category:'Other' });
 
 			sdShop.options.push({ _class: 'sdHover', _min_workbench_level:1, _category:'Vehicles' });
 			sdShop.options.push({ _class: 'sdHover', _min_workbench_level:1, filter: 'hue-rotate(90deg) saturate(2)', _category:'Vehicles' });
@@ -125,13 +124,6 @@ class sdShop
 			sdShop.options.push({ _class: 'sdHover', _min_workbench_level:1, type: 3, filter: 'saturate(0) brightness(1.5)', _category:'Vehicles' });
 			sdShop.options.push({ _class: 'sdHover', _min_workbench_level:1, type: 3, filter: 'saturate(0) brightness(0.5)', _category:'Vehicles' });
 
-			//ctx.filter = '' // yellow
-			//ctx.filter = '' // redish
-			//ctx.filter = '' // pink
-			//ctx.filter = '' // blueish
-			//ctx.filter = '' // white
-			//ctx.filter = '' // black
-
 			function AddBuildPack( filter )
 			{
 				for ( let i2 = 0; i2 < 3; i2++ )
@@ -145,20 +137,10 @@ class sdShop
 					let texture_id = sdBlock.TEXTURE_ID_WALL; // sdBG.TEXTURE_PLATFORMS_COLORED;
 
 					if ( i2 === 1 )
-					{
-						//_min_build_tool_level = 7;
-						//_reinforced_level = 1;
-						//material = sdBlock.MATERIAL_REINFORCED_WALL_LVL1;
-						texture_id = sdBlock.TEXTURE_ID_REINFORCED_LVL1;
-					}
+					texture_id = sdBlock.TEXTURE_ID_REINFORCED_LVL1;
 
 					if ( i2 === 2 )
-					{
-						//_min_build_tool_level = 16;
-						//_reinforced_level = 2;
-						//material = sdBlock.MATERIAL_REINFORCED_WALL_LVL2; // We probably no longer need 2 kinds of these if we could just switch texture
-						texture_id = sdBlock.TEXTURE_ID_REINFORCED_LVL2;
-					}
+					texture_id = sdBlock.TEXTURE_ID_REINFORCED_LVL2;
 
 					sdShop.options.push({ _class: 'sdBlock', width: 16, height: 16, filter: filter, _category:'Walls', _min_build_tool_level:_min_build_tool_level, _reinforced_level:_reinforced_level, material:material, texture_id:texture_id });
 					sdShop.options.push({ _class: 'sdBlock', width: 32, height: 16, filter: filter, _category:'Walls', _min_build_tool_level:_min_build_tool_level, _reinforced_level:_reinforced_level, material:material, texture_id:texture_id });
@@ -167,19 +149,7 @@ class sdShop
 					sdShop.options.push({ _class: 'sdBlock', width: 16, height: 8, filter: filter, _category:'Walls', _min_build_tool_level:_min_build_tool_level, _reinforced_level:_reinforced_level, material:material, texture_id:texture_id });
 					sdShop.options.push({ _class: 'sdBlock', width: 8, height: 16, filter: filter, _category:'Walls', _min_build_tool_level:_min_build_tool_level, _reinforced_level:_reinforced_level, material:material, texture_id:texture_id });
 				}
-				/*
-				sdShop.options.push({ _class: 'sdBlock', width: 16, height: 16, filter: filter, material: sdBlock.MATERIAL_REINFORCED_WALL_LVL1, _reinforced_level: 1, _category:'Walls', _min_build_tool_level: 7 });
-				sdShop.options.push({ _class: 'sdBlock', width: 32, height: 16, filter: filter, material: sdBlock.MATERIAL_REINFORCED_WALL_LVL1, _reinforced_level: 1, _category:'Walls', _min_build_tool_level: 7 });
-				sdShop.options.push({ _class: 'sdBlock', width: 16, height: 32, filter: filter, material: sdBlock.MATERIAL_REINFORCED_WALL_LVL1, _reinforced_level: 1, _category:'Walls', _min_build_tool_level: 7 });
-				sdShop.options.push({ _class: 'sdBlock', width: 32, height: 32, filter: filter, material: sdBlock.MATERIAL_REINFORCED_WALL_LVL1, _reinforced_level: 1, _category:'Walls', _min_build_tool_level: 7 });
-				sdShop.options.push({ _class: 'sdBlock', width: 16, height: 8, filter: filter, material: sdBlock.MATERIAL_REINFORCED_WALL_LVL1, _reinforced_level: 1, _category:'Walls', _min_build_tool_level: 7 });
-
-				sdShop.options.push({ _class: 'sdBlock', width: 16, height: 16, filter: filter, material: sdBlock.MATERIAL_REINFORCED_WALL_LVL2, _reinforced_level: 2, _category:'Walls', _min_build_tool_level: 16 });
-				sdShop.options.push({ _class: 'sdBlock', width: 32, height: 16, filter: filter, material: sdBlock.MATERIAL_REINFORCED_WALL_LVL2, _reinforced_level: 2, _category:'Walls', _min_build_tool_level: 16 });
-				sdShop.options.push({ _class: 'sdBlock', width: 16, height: 32, filter: filter, material: sdBlock.MATERIAL_REINFORCED_WALL_LVL2, _reinforced_level: 2, _category:'Walls', _min_build_tool_level: 16 });
-				sdShop.options.push({ _class: 'sdBlock', width: 32, height: 32, filter: filter, material: sdBlock.MATERIAL_REINFORCED_WALL_LVL2, _reinforced_level: 2, _category:'Walls', _min_build_tool_level: 16 });
-				sdShop.options.push({ _class: 'sdBlock', width: 16, height: 8, filter: filter, material: sdBlock.MATERIAL_REINFORCED_WALL_LVL2, _reinforced_level: 2, _category:'Walls', _min_build_tool_level: 16 });
-				*/
+				
 				sdShop.options.push({ _class: 'sdBG', width: 32, height: 32, filter: filter + 'brightness(1.5)', texture_id: sdBG.TEXTURE_PLATFORMS_COLORED, _category:'Background walls' });
 				sdShop.options.push({ _class: 'sdBG', width: 32, height: 16, filter: filter + 'brightness(1.5)', texture_id: sdBG.TEXTURE_PLATFORMS_COLORED, _category:'Background walls' });
 				sdShop.options.push({ _class: 'sdBG', width: 16, height: 32, filter: filter + 'brightness(1.5)', texture_id: sdBG.TEXTURE_PLATFORMS_COLORED, _category:'Background walls' });
@@ -191,31 +161,6 @@ class sdShop
 				sdShop.options.push({ _class: 'sdBG', width: 16, height: 16, filter: filter, texture_id: sdBG.TEXTURE_HEX, _category:'Background walls' });
 			}
 
-			/*for ( var i = 0; i < 11; i++ )
-			{
-				var filter = ( i === 0 ) ? '' : 'hue-rotate('+(~~(i/12*360))+'deg)';
-
-				if ( i === 6 )
-				filter += ' saturate(60)';
-				if ( i === 7 )
-				filter += ' saturate(10)';
-				if ( i === 8 )
-				filter += ' saturate(4)';
-				if ( i === 10 )
-				filter += ' saturate(2)';
-
-				AddBuildPack( filter, i );
-
-				if ( i !== 6 )
-				if ( i !== 7 )
-				if ( i !== 8 )
-				{
-					sdShop.options.push({ _class: 'sdDoor', width: 32, height: 32, filter: filter, _category:'Doors' });
-					//var filter = ( i === 0 ) ? '' : 'hue-rotate('+(~~(i/12*360))+'deg) contrast(0.75)';
-					sdShop.options.push({ _class: 'sdDoor', width: 32, height: 32, filter: filter, model: sdDoor.MODEL_ARMORED, _category:'Doors' });
-					sdShop.options.push({ _class: 'sdDoor', width: 32, height: 32, filter: filter, model: sdDoor.MODEL_ARMORED_LVL2, _category:'Doors' });
-				}
-			}*/
 			for ( var i = 0; i < 20; i++ )
 			{
 				/*
@@ -374,6 +319,7 @@ class sdShop
 			sdShop.options.push({ _class: 'sdSunPanel', multiplier: 2, _min_build_tool_level: 3, _category:'Base equipment' });
 			sdShop.options.push({ _class: 'sdSunPanel', multiplier: 4, _min_build_tool_level: 9, _category:'Base equipment' });
 			sdShop.options.push({ _class: 'sdSunPanel', multiplier: 8, _min_build_tool_level: 18, _category:'Base equipment' });
+			sdShop.options.push({ _class: 'sdSunPanel', multiplier: 20, _min_build_tool_level: 36, _category:'Base equipment' });
 			sdShop.options.push({ _class: 'sdWeaponBench', _category:'Base equipment' });
 			sdShop.options.push({ _class: 'sdWeaponMerger',_min_workbench_level: 5, _category:'Base equipment' });
 
@@ -434,9 +380,17 @@ class sdShop
 
 			if ( sdWorld.server_config.allow_rescue_teleports )
 			{
+				if ( sdWorld.server_config.allowed_rescue_teleports === null || sdWorld.server_config.allowed_rescue_teleports.indexOf( sdRescueTeleport.TYPE_SHORT_RANGE ) !== -1 )
 				sdShop.options.push({ _class: 'sdRescueTeleport', type: sdRescueTeleport.TYPE_SHORT_RANGE, _category:'Base equipment'});
+			
+				if ( sdWorld.server_config.allowed_rescue_teleports === null || sdWorld.server_config.allowed_rescue_teleports.indexOf( sdRescueTeleport.TYPE_INFINITE_RANGE ) !== -1 )
 				sdShop.options.push({ _class: 'sdRescueTeleport', type: sdRescueTeleport.TYPE_INFINITE_RANGE, _category:'Base equipment', _min_build_tool_level: 10 });
+			
+				if ( sdWorld.server_config.allowed_rescue_teleports === null || sdWorld.server_config.allowed_rescue_teleports.indexOf( sdRescueTeleport.TYPE_CLONER ) !== -1 )
 				sdShop.options.push({ _class: 'sdRescueTeleport', type: sdRescueTeleport.TYPE_CLONER, _category:'Base equipment', _min_build_tool_level: 20 });
+			
+				if ( sdWorld.server_config.allowed_rescue_teleports !== null && sdWorld.server_config.allowed_rescue_teleports.indexOf( sdRescueTeleport.TYPE_RESPAWN_POINT ) !== -1 )
+				sdShop.options.push({ _class: 'sdRescueTeleport', type: sdRescueTeleport.TYPE_RESPAWN_POINT, _category:'Base equipment'});
 			}
 			if ( sdWorld.server_config.allowed_base_shielding_unit_types === null )
 			{
@@ -465,13 +419,14 @@ class sdShop
 			sdShop.options.push({ _class: 'sdCamera', _category:'Base equipment', _min_build_tool_level: 1 });
 
 			sdShop.options.push({ _class: 'sdButton', type:0, kind:0, _category:'Base equipment' });
-			sdShop.options.push({ _class: 'sdButton', type:0, kind:2, _category:'Base equipment' });
-			sdShop.options.push({ _class: 'sdButton', type:0, kind:3, _category:'Base equipment' });
-			sdShop.options.push({ _class: 'sdButton', type:0, kind:4, _category:'Base equipment' });
-			sdShop.options.push({ _class: 'sdButton', type:0, kind:5, _category:'Base equipment' });
+			sdShop.options.push({ _class: 'sdButton', type:0, kind:2, _category:'Base equipment', _min_build_tool_level: 2 });
+			sdShop.options.push({ _class: 'sdButton', type:0, kind:3, _category:'Base equipment', _min_build_tool_level: 2 });
+			sdShop.options.push({ _class: 'sdButton', type:0, kind:4, _category:'Base equipment', _min_build_tool_level: 2 });
+			sdShop.options.push({ _class: 'sdButton', type:0, kind:5, _category:'Base equipment', _min_build_tool_level: 2 });
 			sdShop.options.push({ _class: 'sdButton', type:1, _category:'Base equipment' });
 			sdShop.options.push({ _class: 'sdButton', type:2, _category:'Base equipment' });
 			sdShop.options.push({ _class: 'sdButton', type:3, _category:'Base equipment' });
+			sdShop.options.push({ _class: 'sdButton', type:4, _category:'Base equipment', _min_build_tool_level: 2 });
 
 
 			for ( let i = 0; i < sdCaption.colors.length / 3; i++ )
@@ -537,31 +492,46 @@ class sdShop
 				//if ( globalThis.isWin )
 				if ( sdGun.classes[ i ].title !== 'Missing weapon' )
 				{
+					if ( i === sdGun.CLASS_SCORE_SHARD )
+					{
+						for ( let i2 = 0; i2 < sdGun.score_shard_recolor_tiers.length; i2++ )
+						if ( sdGun.score_shard_recolor_tiers[ i2 ] )
+						{
+							sdShop.options.push({
+								_class: 'sdGun',
+								class: i,
+								extra: i2,
+								sd_filter: sdGun.score_shard_recolor_tiers[ i2 ],
+								_category:'Development tests guns'
+							});
+						}
+					}
+					else
 					if ( i === sdGun.CLASS_BUILDTOOL_UPG )
 					{
 						sdShop.options.push({
 							_class: 'sdGun',
 							class: i,
 							extra: 0,
-							_category:'Development tests'
+							_category:'Development tests guns'
 						});
 						sdShop.options.push({
 							_class: 'sdGun',
 							class: i,
 							extra: 1,
-							_category:'Development tests'
+							_category:'Development tests guns'
 						});
 						sdShop.options.push({
 							_class: 'sdGun',
 							class: i,
 							extra: -123,
-							_category:'Development tests'
+							_category:'Development tests guns'
 						});
 						sdShop.options.push({
 							_class: 'sdGun',
 							class: i,
 							extra: 2,
-							_category:'Development tests'
+							_category:'Development tests guns'
 						});
 					}
 					else
@@ -569,7 +539,7 @@ class sdShop
 						sdShop.options.push({
 							_class: 'sdGun',
 							class: i, 
-							_category:'Development tests'
+							_category:'Development tests guns'
 						});
 					}
 				}
@@ -607,6 +577,7 @@ class sdShop
 				sdShop.options.push({ _class: 'sdAsteroid', type:0, _category:'Development tests' });
 				sdShop.options.push({ _class: 'sdAsteroid', type:1, _category:'Development tests' });
 				sdShop.options.push({ _class: 'sdAsteroid', type:2, _category:'Development tests' });
+				sdShop.options.push({ _class: 'sdAsteroid', type:3, _category:'Development tests' });
 				sdShop.options.push({ _class: 'sdCube', _category:'Development tests' });
 				sdShop.options.push({ _class: 'sdCube', kind:1, _category:'Development tests' });
 				sdShop.options.push({ _class: 'sdCube', kind:2, _category:'Development tests' });
@@ -629,6 +600,7 @@ class sdShop
 				sdShop.options.push({ _class: 'sdSandWorm', kind: 1, _category:'Development tests' });
 				sdShop.options.push({ _class: 'sdSandWorm', kind: 2, _category:'Development tests' });
 				sdShop.options.push({ _class: 'sdSandWorm', kind: 3, _category:'Development tests' });
+				sdShop.options.push({ _class: 'sdSandWorm', kind: 3, scale: 0.5, _category:'Development tests' });
 				sdShop.options.push({ _class: 'sdSandWorm', kind: 4, _category:'Development tests' });
 				sdShop.options.push({ _class: 'sdGrass', _category:'Development tests' });
 				sdShop.options.push({ _class: 'sdGrass', variation:1, _category:'Development tests' });
@@ -659,6 +631,14 @@ class sdShop
 				sdShop.options.push({ _class: 'sdShurgTurret', _category:'Development tests' });
 				sdShop.options.push({ _class: 'sdShurgTurret', type: 1, _category:'Development tests' });
 				sdShop.options.push({ _class: 'sdShurgExcavator', _category:'Development tests' });
+				sdShop.options.push({ _class: 'sdShurgManualTurret', _category:'Development tests' });
+				sdShop.options.push({ _class: 'sdShurgManualTurret', spawn_with_pilot: true, _category:'Development tests' });
+				sdShop.options.push({ _class: 'sdHover', type:0, spawn_with_ents: 1, _category:'Development tests' });
+				sdShop.options.push({ _class: 'sdHover', type:1, spawn_with_ents: 1, _category:'Development tests' });
+				sdShop.options.push({ _class: 'sdHover', type:2, spawn_with_ents: 1, _category:'Development tests' });
+				sdShop.options.push({ _class: 'sdHover', type:3, spawn_with_ents: 1, filter: 'saturate(0) brightness(0.5)', _category:'Development tests' });
+				sdShop.options.push({ _class: 'sdHover', type:4, guns: 0, _category:'Development tests' });
+				sdShop.options.push({ _class: 'sdHover', type:4, spawn_with_ents: 2, guns: 0, _category:'Development tests' });
 				sdShop.options.push({ _class: 'sdBadDog', _category:'Development tests' });
 				sdShop.options.push({ _class: 'sdShark', _category:'Development tests' });
 				sdShop.options.push({ _class: 'sdWorkbench', _category:'Development tests' });
@@ -667,7 +647,29 @@ class sdShop
 				sdShop.options.push({ _class: 'sdRift', type: 3, _category:'Development tests' });
 				sdShop.options.push({ _class: 'sdRift', type: 4, _category:'Development tests' });
 				sdShop.options.push({ _class: 'sdRift', type: 5, _category:'Development tests' });
-				sdShop.options.push({ _class: 'sdCrystal', tag: 'deep', _category:'Development tests' });
+				sdShop.options.push({ _class: 'sdRift', type: 6, _category:'Development tests' });
+				
+				{
+					let base_props = { _class: 'sdCrystal', tag: 'deep', _category:'Development tests crystals' };
+					let type = [ undefined, 1, 2, 3, 4, 5, 6, 7, 8 ];
+					let matter_max = [ 40, 80, 160, 320, 640, 1280, 2560, 5120, 5120 * 2, 5120 * 4, 5120 * 8, sdCrystal.anticrystal_value ];
+					let speciality = [ undefined, 1 ];
+					for ( let s of speciality )
+					for ( let t of type )
+					for ( let m of matter_max )
+					{
+						if ( t === sdCrystal.TYPE_CRYSTAL_BALLOON )
+						m *= 0.25;
+					
+						if ( t === sdCrystal.TYPE_CRYSTAL_CRAB_BIG || t === sdCrystal.TYPE_CRYSTAL_BIG )
+						m *= 4;
+					
+						let props = Object.assign( { type:t, matter_max:m, speciality:s }, base_props );
+						sdShop.options.push( props );
+					}
+				}
+				
+				/*sdShop.options.push({ _class: 'sdCrystal', tag: 'deep', _category:'Development tests' });
 				sdShop.options.push({ _class: 'sdCrystal', tag: 'deep', matter_max: 40, _category:'Development tests' });
 				sdShop.options.push({ _class: 'sdCrystal', tag: 'deep', matter_max: 80, _category:'Development tests' });
 				sdShop.options.push({ _class: 'sdCrystal', tag: 'deep', matter_max: 160, _category:'Development tests' });
@@ -679,12 +681,8 @@ class sdShop
 				sdShop.options.push({ _class: 'sdCrystal', tag: 'deep', matter_max: 5120 * 2, _category:'Development tests' }); // Glowing one
 				sdShop.options.push({ _class: 'sdCrystal', tag: 'deep', matter_max: 5120 * 4, _category:'Development tests' }); // Glowing one
 				sdShop.options.push({ _class: 'sdCrystal', tag: 'deep', matter_max: 5120 * 8, _category:'Development tests' }); // Glowing one
-				sdShop.options.push({ _class: 'sdCrystal', tag: 'deep', matter_max: sdCrystal.anticrystal_value, _category:'Development tests' });
-				sdShop.options.push({ _class: 'sdDrone', type: 6, _category:'Development tests' });
-				sdShop.options.push({ _class: 'sdDrone', type: 7, _category:'Development tests' });
-				sdShop.options.push({ _class: 'sdDrone', type: 8, _category:'Development tests' });
-				sdShop.options.push({ _class: 'sdDrone', type: 9, _category:'Development tests' });
-				sdShop.options.push({ _class: 'sdCrystal', type: sdCrystal.TYPE_CRYSTAL_CRAB, tag: 'deep', matter_max: 40, _category:'Development tests' });
+				sdShop.options.push({ _class: 'sdCrystal', tag: 'deep', matter_max: sdCrystal.anticrystal_value, _category:'Development tests' });*/
+				/*sdShop.options.push({ _class: 'sdCrystal', type: sdCrystal.TYPE_CRYSTAL_CRAB, tag: 'deep', matter_max: 40, _category:'Development tests' });
 				sdShop.options.push({ _class: 'sdCrystal', type: sdCrystal.TYPE_CRYSTAL_CRAB, tag: 'deep', matter_max: 80, _category:'Development tests' });
 				sdShop.options.push({ _class: 'sdCrystal', type: sdCrystal.TYPE_CRYSTAL_CRAB, tag: 'deep', matter_max: 160, _category:'Development tests' });
 				sdShop.options.push({ _class: 'sdCrystal', type: sdCrystal.TYPE_CRYSTAL_CRAB, tag: 'deep', matter_max: 320, _category:'Development tests' });
@@ -737,18 +735,26 @@ class sdShop
 				sdShop.options.push({ _class: 'sdCrystal', type:sdCrystal.TYPE_CRYSTAL_BALLOON, matter_max: 0.25 * 5120 * 8, _category:'Development tests' }); // Glowing one
 				sdShop.options.push({ _class: 'sdCrystal', type:sdCrystal.TYPE_CRYSTAL_BALLOON, matter_max: 0.25 * sdCrystal.anticrystal_value, _category:'Development tests' });
 				
-				sdShop.options.push({ _class: 'sdDrone', _category:'Development tests' });
+				sdShop.options.push({ _class: 'sdCrystal', type:sdCrystal.TYPE_EXCAVATOR_QUARTZ, _category:'Development tests' });*/
+				
+				//sdShop.options.push({ _class: 'sdDrone', _category:'Development tests' });
 				sdShop.options.push({ _class: 'sdDrone', _ai_team: 1, _category:'Development tests' });
-				sdShop.options.push({ _class: 'sdDrone', type: 10, _ai_team: 1, _category:'Development tests' });
-				sdShop.options.push({ _class: 'sdDrone', type: 2, _ai_team: 2, _category:'Development tests' });
-				sdShop.options.push({ _class: 'sdDrone', type: 3, _ai_team: 4,_category:'Development tests' });
-				sdShop.options.push({ _class: 'sdDrone', type: 4, _ai_team: 4, _category:'Development tests' });
-				sdShop.options.push({ _class: 'sdDrone', type: 5, _ai_team: 4, _category:'Development tests' });
-				sdShop.options.push({ _class: 'sdDrone', type: 12, _ai_team: 4, _category:'Development tests' });
-				sdShop.options.push({ _class: 'sdDrone', type: 13, _ai_team: 4, _category:'Development tests' });
-				sdShop.options.push({ _class: 'sdDrone', type: 14, _ai_team: 4, _category:'Development tests' });
-				sdShop.options.push({ _class: 'sdDrone', type: 15, _ai_team: 4, _category:'Development tests' });
-				sdShop.options.push({ _class: 'sdDrone', type: 16, _ai_team: 4, _category:'Development tests' });
+				sdShop.options.push({ _class: 'sdDrone', type: 2, _category:'Development tests' });
+				sdShop.options.push({ _class: 'sdDrone', type: 3, _category:'Development tests' });
+				sdShop.options.push({ _class: 'sdDrone', type: 4, _category:'Development tests' });
+				sdShop.options.push({ _class: 'sdDrone', type: 5, _category:'Development tests' });
+				sdShop.options.push({ _class: 'sdDrone', type: 6, _category:'Development tests' });
+				sdShop.options.push({ _class: 'sdDrone', type: 7, _category:'Development tests' });
+				sdShop.options.push({ _class: 'sdDrone', type: 8, _category:'Development tests' });
+				sdShop.options.push({ _class: 'sdDrone', type: 9, _category:'Development tests' });
+				sdShop.options.push({ _class: 'sdDrone', type: 10, _category:'Development tests' });
+				sdShop.options.push({ _class: 'sdDrone', type: 12, _category:'Development tests' });
+				sdShop.options.push({ _class: 'sdDrone', type: 13, _category:'Development tests' });
+				sdShop.options.push({ _class: 'sdDrone', type: 14, _category:'Development tests' });
+				sdShop.options.push({ _class: 'sdDrone', type: 15, _category:'Development tests' });
+				sdShop.options.push({ _class: 'sdDrone', type: 16, _category:'Development tests' });
+				sdShop.options.push({ _class: 'sdDrone', type: 17, _category:'Development tests', _ai_team: 0, unlimited_range: true });
+				sdShop.options.push({ _class: 'sdDrone', type: 18, _category:'Development tests' });
 				sdShop.options.push({ _class: 'sdZektaronDreadnought', _category:'Development tests' });
 				sdShop.options.push({ _class: 'sdDrone', type: 11, _ai_team: -1, _category:'Development tests' });
 				sdShop.options.push({ _class: 'sdLost', _category:'Development tests' });
@@ -774,6 +780,8 @@ class sdShop
 				sdShop.options.push({ _class: 'sdAbomination', _category:'Development tests' });
 				sdShop.options.push({ _class: 'sdBiter', _category:'Development tests' });
 				sdShop.options.push({ _class: 'sdBiter', type: 1, _category:'Development tests' });
+				sdShop.options.push({ _class: 'sdVestroid', type:0, _category:'Development tests' });
+				sdShop.options.push({ _class: 'sdVestroid', type:1, _category:'Development tests' });
 				//sdShop.options.push({ _class: 'sdSensorArea', _category:'Development tests' });
 				//sdShop.options.push({ _class: 'sdBloodDecal', _category:'Development tests' });
 				sdShop.options.push({ _class: 'sdBG', width: 16, height: 8, _category:'Development tests' });
@@ -789,6 +797,7 @@ class sdShop
 				sdShop.options.push({ _class: 'sdBot', kind:0, _category:'Development tests' });
 				sdShop.options.push({ _class: 'sdBot', kind:1, _category:'Development tests' });
 				sdShop.options.push({ _class: 'sdGuanako', _category:'Development tests' });
+				sdShop.options.push({ _class: 'sdGuanakoStructure', _category:'Development tests' });
 				sdShop.options.push({ _class: 'sdVeloxMiner', _category:'Development tests' });
 				sdShop.options.push({ _class: 'sdLandScanner', _category:'Development tests' });
 				sdShop.options.push({ _class: 'sdDropPod', type: 0, _category:'Development tests' });
@@ -796,12 +805,25 @@ class sdShop
 				sdShop.options.push({ _class: 'sdBeamProjector', _category:'Development tests' });
 				sdShop.options.push({ _class: 'sdLongRangeAntenna', _category:'Development tests' });
 				sdShop.options.push({ _class: 'sdSolarMatterDistributor', _category:'Development tests' });
+				sdShop.options.push({ _class: 'sdExcavator', _category:'Development tests' });
 				sdShop.options.push({ _class: 'sdDrone', type: 17, _category:'Development tests' });
-				sdShop.options.push({ _class: 'sdVestroid', type:0, _category:'Development tests' });
-				sdShop.options.push({ _class: 'sdVestroid', type:1, _category:'Development tests' });
+				sdShop.options.push({ _class: 'sdMothershipContainer', _category:'Development tests' });
 				//sdShop.options.push({ _class: 'sdFactionSpawner', type:sdFactionSpawner.SARRORIAN_SPAWNER, _category:'Development tests' });
 				//sdShop.options.push({ _class: 'sdFactionSpawner', type:sdFactionSpawner.COUNCIL_SPAWNER, _category:'Development tests' });
 				//sdShop.options.push({ _class: 'sdFactionSpawner', type:sdFactionSpawner.TZYRG_SPAWNER, _category:'Development tests' });
+				
+				/*sdShop.options.push({ _class: 'sdCrystal', tag: 'deep', matter_max: 40, speciality: 1, _category:'Development tests' });
+				sdShop.options.push({ _class: 'sdCrystal', tag: 'deep', matter_max: 80, speciality: 1, _category:'Development tests' });
+				sdShop.options.push({ _class: 'sdCrystal', tag: 'deep', matter_max: 160, speciality: 1, _category:'Development tests' });
+				sdShop.options.push({ _class: 'sdCrystal', tag: 'deep', matter_max: 320, speciality: 1, _category:'Development tests' });
+				sdShop.options.push({ _class: 'sdCrystal', tag: 'deep', matter_max: 640, speciality: 1, _category:'Development tests' });
+				sdShop.options.push({ _class: 'sdCrystal', tag: 'deep', matter_max: 1280, speciality: 1, _category:'Development tests' });
+				sdShop.options.push({ _class: 'sdCrystal', tag: 'deep', matter_max: 2560, speciality: 1, _category:'Development tests' });
+				sdShop.options.push({ _class: 'sdCrystal', tag: 'deep', matter_max: 5120, speciality: 1, _category:'Development tests' });
+				sdShop.options.push({ _class: 'sdCrystal', tag: 'deep', matter_max: 10240, speciality: 1, _category:'Development tests' });
+				sdShop.options.push({ _class: 'sdCrystal', tag: 'deep', matter_max: 20480, speciality: 1, _category:'Development tests' });
+				sdShop.options.push({ _class: 'sdCrystal', tag: 'deep', matter_max: 40960, speciality: 1, _category:'Development tests' });
+				sdShop.options.push({ _class: 'sdCrystal', tag: 'deep', matter_max: 81920, speciality: 1, _category:'Development tests' });*/
 			}
 
 			sdShop.options.push({ _class: 'sdArea', type:sdArea.TYPE_PREVENT_DAMAGE, size:256, _category:'Admin tools' });
@@ -820,13 +842,20 @@ class sdShop
 			
 			// Outpost stuff
 			//
-			//Falkok
-			sdShop.options.push({ _class: 'sdFactionSpawner', type:sdFactionSpawner.FALKOK_SPAWNER, _category:'Faction outpost tools' });
-			sdShop.options.push({ _class: 'sdDoor', w:32, h:32, model: sdDoor.MODEL_FALKOK, open_type: 1, _ai_team: 1, _category:'Faction outpost tools' });
-			sdShop.options.push({ _class: 'sdDoor', w:8, h:32, model: sdDoor.MODEL_FALKOK, open_type: 1, _ai_team: 1, _category:'Faction outpost tools' });
-			sdShop.options.push({ _class: 'sdDoor', w:32, h:8, model: sdDoor.MODEL_FALKOK, open_type: 1, _ai_team: 1, _category:'Faction outpost tools' });
-			//
-			
+			// Falkok
+			sdShop.options.push({ _class: 'sdFactionSpawner', type:sdFactionSpawner.FALKOK_SPAWNER, _spawn_with_full_hp: true, _category:'Faction outpost tools' });
+			sdShop.options.push({ _class: 'sdDoor', w:32, h:32, model: sdDoor.MODEL_FALKOK, open_type: 1, _ai_team: 1, _spawn_with_full_hp: true, _category:'Faction outpost tools' });
+			sdShop.options.push({ _class: 'sdDoor', w:8, h:32, model: sdDoor.MODEL_FALKOK, open_type: 1, _ai_team: 1, _spawn_with_full_hp: true, _category:'Faction outpost tools' });
+			sdShop.options.push({ _class: 'sdDoor', w:32, h:8, model: sdDoor.MODEL_FALKOK, open_type: 1, _ai_team: 1, _spawn_with_full_hp: true, _category:'Faction outpost tools' });
+			// Tzyrg
+			sdShop.options.push({ _class: 'sdTzyrgMortar', _spawn_with_full_hp: true, _category:'Faction outpost tools' });
+			sdShop.options.push({ _class: 'sdFactionSpawner', type:sdFactionSpawner.TZYRG_SPAWNER, _spawn_with_full_hp: true, _category:'Faction outpost tools' });
+			sdShop.options.push({ _class: 'sdBlock', width: 16, height: 16, _ai_team: 8, _spawn_with_full_hp: true, texture_id: sdBlock.TEXTURE_ID_TZYRG_WALL, _category:'Faction outpost tools' });
+			sdShop.options.push({ _class: 'sdBlock', width: 32, height: 16, _ai_team: 8, _spawn_with_full_hp: true, texture_id: sdBlock.TEXTURE_ID_TZYRG_WALL, _category:'Faction outpost tools' });
+			sdShop.options.push({ _class: 'sdBlock', width: 16, height: 32, _ai_team: 8, _spawn_with_full_hp: true, texture_id: sdBlock.TEXTURE_ID_TZYRG_WALL, _category:'Faction outpost tools' });
+			sdShop.options.push({ _class: 'sdBlock', width: 32, height: 32, _ai_team: 8, _spawn_with_full_hp: true, texture_id: sdBlock.TEXTURE_ID_TZYRG_WALL, _category:'Faction outpost tools' });
+			sdShop.options.push({ _class: 'sdBlock', width: 16, height: 8, _ai_team: 8, _spawn_with_full_hp: true, texture_id: sdBlock.TEXTURE_ID_TZYRG_WALL, _category:'Faction outpost tools' });
+			sdShop.options.push({ _class: 'sdBlock', width: 8, height: 16, _ai_team: 8, _spawn_with_full_hp: true, texture_id: sdBlock.TEXTURE_ID_TZYRG_WALL, _category:'Faction outpost tools' });
 			//
 
 			//let remover_sd_filter = sdWorld.CreateSDFilter();
@@ -838,7 +867,8 @@ class sdShop
 			sdShop.options.push({ _class: 'sdGun', class:sdGun.CLASS_ADMIN_DAMAGER, _category:'Admin tools' });
 			sdShop.options.push({ _class: 'sdLongRangeTeleport', is_server_teleport:1, _category:'Admin tools' });
 
-			for ( var i = 1; i <= 40; i++ ) // increment when you add new humanoids or else they won't show up in shop
+			// for ( var i = 1; i <= 40; i++ ) // increment when you add new humanoids or else they won't show up in shop // This is no longer required. - Molis
+			for ( var i = 1; i < sdFactionTools.FACTIONS_LENGTH; i++ )
 			{
 				sdShop.options.push({
 					_class: 'sdFactionTools',
@@ -901,7 +931,7 @@ class sdShop
 			{
 				max_level: 1,
 				matter_cost: 75,
-				description: 'Allows you to use the hook with C button or middle mouse button.',
+				description: 'Allows you to use the hook (to carry items and crystals around) with C button or middle mouse button.',
 				action: ( character, level_purchased )=>
 				{
 					character._hook_allowed = true;
@@ -958,6 +988,8 @@ class sdShop
 			{
 				max_level: 5,
 				matter_cost: 200,
+				max_with_upgrade_station_level: 10,
+				min_upgrade_station_level: 3,
 				description: 'Allows you to regenerate matter to a certain amount.',
 				action: ( character, level_purchased )=>
 				{
@@ -989,10 +1021,12 @@ class sdShop
 				max_level: 5,
 				matter_cost: 150,
 				min_build_tool_level: 1,
+				max_with_upgrade_station_level: 10,
+				min_upgrade_station_level: 2,
 				description: 'Reduces matter cost for using jetpack.',
 				action: ( character, level_purchased )=>
 				{
-					character._jetpack_fuel_multiplier = 1 - ( 0.15 * level_purchased ); // Max 75% fuel cost reduction
+					character._jetpack_fuel_multiplier = 1 - ( 0.09 * level_purchased ); // Max 90% fuel cost reduction
 				}
 			},
 			upgrade_matter_regeneration_speed: // Upgrade idea & pull request by Booraz149 ( https://github.com/Booraz149 )
@@ -1000,6 +1034,8 @@ class sdShop
 				max_level: 3,
 				matter_cost: 200,
 				min_build_tool_level: 2,
+				max_with_upgrade_station_level: 5,
+				min_upgrade_station_level: 4,
 				description: 'Increases matter regeneration speed.',
 				action: ( character, level_purchased )=>
 				{
@@ -1011,10 +1047,12 @@ class sdShop
 				max_level: 3,
 				matter_cost: 100,
 				min_build_tool_level: 4,
+				max_with_upgrade_station_level: 5,
+				min_upgrade_station_level: 5,
 				description: 'Increases jetpack efficiency to reach higher speeds faster.',
 				action: ( character, level_purchased )=>
 				{
-					character._jetpack_power = 1 + ( level_purchased * 0.5 );
+					character._jetpack_power = 1 + ( level_purchased * 0.4 );
 				}
 			},
 			upgrade_stability_recovery:
@@ -1022,6 +1060,8 @@ class sdShop
 				max_level: 3,
 				matter_cost: 125,
 				min_build_tool_level: 3,
+				max_with_upgrade_station_level: 5,
+				min_upgrade_station_level: 6,
 				description: 'Reduces time to recover after falling down.',
 				action: ( character, level_purchased )=>
 				{
@@ -1054,6 +1094,46 @@ class sdShop
 					character.TogglePlayerAbility();
 				}
 			},
+			upgrade_invisibility_cost_reduction:
+			{
+				max_level: 0, // Only with upgrade station
+				matter_cost: 300,
+				min_build_tool_level: 10,
+				max_with_upgrade_station_level: 5,
+				min_upgrade_station_level: 7,
+				description: 'Reduces matter cost of invisibility ability.',
+				action: ( character, level_purchased )=>
+				{
+					character._ghost_cost_multiplier = 1 - ( 0.07 * level_purchased );
+				}
+			},
+			upgrade_shield_cost_reduction:
+			{
+				max_level: 0, // Only with upgrade station
+				matter_cost: 300,
+				min_build_tool_level: 10,
+				max_with_upgrade_station_level: 5,
+				min_upgrade_station_level: 8,
+				description: 'Reduces matter cost of shield ability.',
+				action: ( character, level_purchased )=>
+				{
+					character._shield_cost_multiplier = 1 - ( 0.07 * level_purchased );
+				}
+			},
+			upgrade_armor_repair_speed:
+			{
+				max_level: 0, // Only with upgrade station
+				matter_cost: 500,
+				min_build_tool_level: 10,
+				max_with_upgrade_station_level: 5,
+				min_upgrade_station_level: 9,
+				description: 'Increases speed of armor repair modules.',
+				action: ( character, level_purchased )=>
+				{
+					character._armor_repair_mult = 1 + ( 0.1 * level_purchased ); // 50% increased speed at max level
+				}
+			}
+
 		};
 		for ( var i in sdShop.upgrades )
 		{
@@ -1062,6 +1142,46 @@ class sdShop
 				_category:'Upgrades', _min_build_tool_level: sdShop.upgrades[ i ].min_build_tool_level || 0 });
 		}
 
+	}
+	static IsGodModeOnlyItem( _build_params, inception=0 )
+	{
+		// Loop found, ignore this parent folder
+		if ( inception > 100 )
+		return undefined;
+		
+		const Result = ( v )=>
+		{
+			if ( _build_params._opens_category )
+			sdShop.category_godmode_permission_cache.set( _build_params._opens_category, v );
+			
+			return v;
+		};
+		
+		if ( _build_params._godmode_only )
+		{
+			return Result( true );
+		}
+		
+		if ( _build_params._category )
+		{
+			let v = sdShop.category_godmode_permission_cache.get( _build_params._category );
+			if ( v !== undefined )
+			return Result( v );
+			
+			for ( let i = 0; i < sdShop.options.length; i++ )
+			{
+				if ( sdShop.options[ i ]._opens_category )
+				if ( sdShop.options[ i ]._opens_category === _build_params._category )
+				{
+					let r = sdShop.IsGodModeOnlyItem( sdShop.options[ i ], inception + 1 );
+					
+					if ( r !== undefined ) // Inception
+					return Result( r );
+				}
+			}
+		}
+		
+		return Result( false );
 	}
 	static Draw( ctx )
 	{
@@ -1175,6 +1295,7 @@ class sdShop
 				let selectable = true;
 				let max_level = 0;
 				let cur_level = 0;
+				let max_level_with_station = 0;
 					
 				if ( sdWorld.my_entity._build_params._class === null )
 				{
@@ -1190,8 +1311,11 @@ class sdShop
 						{
 							max_level = sdShop.upgrades[ sdWorld.my_entity._build_params.upgrade_name ].max_level;
 							cur_level = ( sdWorld.my_entity._upgrade_counters[ sdWorld.my_entity._build_params.upgrade_name ] || 0 );
+							
+							let min_station_level_needed = ( sdShop.upgrades[ sdWorld.my_entity._build_params.upgrade_name ].min_upgrade_station_level || 0 );
+							max_level_with_station = ( sdShop.upgrades[ sdWorld.my_entity._build_params.upgrade_name ].max_with_upgrade_station_level || max_level );
 
-							if ( cur_level >= max_level )
+							if ( ( cur_level >= max_level && sdWorld.my_entity.GetUpgradeStationLevel() < min_station_level_needed ) || ( cur_level >= max_level_with_station ) )
 							selectable = false;
 						}
 						else
@@ -1411,13 +1535,22 @@ class sdShop
 				}
 				
 				
-				if ( max_level > 0 )
+				if ( max_level > 0 || max_level_with_station > 0 )
 				{
 					ctx.fillStyle = '#ffffff';
 					//ctx.font = "4.5px Verdana";
 					ctx.font = "5.5px Verdana";
 					ctx.textAlign = 'right';
+					
+					if ( max_level_with_station === 0 ) // No upgrade station upgrades?
 					ctx.fillText( cur_level + " / " + max_level, 32, 32 );
+					else
+					{
+						if ( cur_level >= max_level )
+						ctx.fillText( cur_level + " / " + max_level_with_station, 32, 32 );
+						else
+						ctx.fillText( cur_level + " / " + max_level, 32, 32 );
+					}
 				}
 
 				ctx.restore();
@@ -1473,9 +1606,19 @@ class sdShop
 				else
 				if ( pseudo_entity._class !== null )
 				{
-					let c = sdWorld.ClassNameToProperName( pseudo_entity._class, pseudo_entity );
+					//let c = sdWorld.ClassNameToProperName( pseudo_entity._class, pseudo_entity );
 					
-					try
+					let descr_obj = Object.getOwnPropertyDescriptors( sdWorld.entity_classes[ pseudo_entity._class ].prototype );
+
+					for ( let prop in descr_obj )
+					Object.defineProperty( pseudo_entity, prop, descr_obj[ prop ] );
+
+					item_title = pseudo_entity.title;
+
+					description = pseudo_entity.description;
+
+					
+					/*try
 					{
 						let title = sdWorld.entity_classes[ pseudo_entity._class ].prototype.title;
 						
@@ -1490,13 +1633,13 @@ class sdShop
 						c = title;
 					}catch(e){};
 					
-					item_title = c;
+					item_title = c;*/
 					
-					how_to_build_hint = T('Click to select')+' "' + c + '" '+T('as a build object. Then click to place this object in world.');
+					how_to_build_hint = T('Click to select')+' "' + item_title + '" '+T('as a build object. Then click to place this object in world.');
 					
-					pseudo_entity.title = c; // Storages' description won't know the title otherwise
+					//pseudo_entity.title = c; // Storages' description won't know the title otherwise
 					
-					try
+					/*try
 					{
 						if ( sdWorld.entity_classes[ pseudo_entity._class ].prototype.description !== undefined )
 						description = sdWorld.entity_classes[ pseudo_entity._class ].prototype.description;
@@ -1510,14 +1653,26 @@ class sdShop
 					if ( sdCable.attacheable_entities.indexOf( pseudo_entity._class ) !== -1 )
 					{
 						description = 'This entity can be connected to other entities via cable management tool (slot 7).';
-					}
+					}*/
 				}
 				else
 				if ( pseudo_entity.upgrade_name )
 				{
 					item_title = T(capitalize( pseudo_entity.upgrade_name.split('_').join(' ') ));
 					
+					
+					// Oh man, here I go butchering the code again :( - Booraz149
+					
+					let max_level = sdShop.upgrades[ pseudo_entity.upgrade_name ].max_level;
+					let cur_level = ( sdWorld.my_entity._upgrade_counters[ pseudo_entity.upgrade_name ] || 0 );
+					let min_station_level = ( sdShop.upgrades[ pseudo_entity.upgrade_name ].min_upgrade_station_level || 0 )
+					
+					
 					how_to_build_hint = T('Click to select')+' "' + item_title + '" '+T('as an upgrade. Then click anywhere to purchase upgrade.');
+					
+					if ( ( cur_level >= max_level ) && ( sdWorld.my_entity.GetUpgradeStationLevel() < min_station_level ) )
+					how_to_build_hint = T('To further')+' "' + item_title + '" '+T(', you need a level ')+ min_station_level +T(' upgrade station.');
+				
 					description = capitalize( pseudo_entity.description );
 				}
 				

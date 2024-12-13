@@ -42,7 +42,7 @@ class sdFactionskin extends sdEntity
 		sdWorld.entity_classes[ this.name ] = this; // Register for object spawn
 	}
 
-	static SetHumanoidSkinClass( character_entity, skin_class = -1 )
+	static SetHumanoidSkinClass( character_entity, skin_class = -1, ENTITIES_ARRAY=sdEntity.entities, GUN_CLASS=sdGun, PLAY_SOUND_METHOD=sdSound.PlaySound, SEND_EFFECT_METHOD=sdWorld.SendEffect )
 	{
 		let character_settings;
 		if ( skin_class === sdFactionskin.SKIN_STAR_DEFENDER ) // Star Defender Regular
@@ -173,8 +173,8 @@ class sdFactionskin extends sdEntity
 			character_entity.matter = 150;
 			character_entity.matter_max = 150;
 
-			character_entity.hea = 650;
-			character_entity.hmax = 650;
+			character_entity.hea = 500;
+			character_entity.hmax = 500;
 	
 			character_entity._ai = { direction: ( character_entity.x > ( sdWorld.world_bounds.x1 + sdWorld.world_bounds.x2 ) / 2 ) ? -1 : 1 };			
 			character_entity._ai_level = 4;
@@ -208,8 +208,8 @@ class sdFactionskin extends sdEntity
 			character_entity.matter = 300;
 			character_entity.matter_max = 300; // Let player leech matter off the bodies
 
-			character_entity.hea = 850;
-			character_entity.hmax = 850;
+			character_entity.hea = 650;
+			character_entity.hmax = 650;
 
 			character_entity._ai = { direction: ( character_entity.x > ( sdWorld.world_bounds.x1 + sdWorld.world_bounds.x2 ) / 2 ) ? -1 : 1 };
 			character_entity._ai_level = 10;
@@ -219,10 +219,10 @@ class sdFactionskin extends sdEntity
 			character_entity._jetpack_fuel_multiplier = 0.25; // Less fuel usage when jetpacking
 			character_entity._ai_team = 3; // AI team 3 is for the Council
 			character_entity._matter_regeneration_multiplier = 10; // Their matter regenerates 10 times faster than normal, unupgraded players
-			sdSound.PlaySound({ name:'council_teleport', x:character_entity.x, y:character_entity.y, pitch: 1, volume:1 });
+			PLAY_SOUND_METHOD({ name:'council_teleport', x:character_entity.x, y:character_entity.y, pitch: 1, volume:1 });
 			character_entity._ai.next_action = 5;
 
-			sdWorld.SendEffect({ x:character_entity.x, y:character_entity.y, type:sdEffect.TYPE_TELEPORT, filter:'hue-rotate(' + ~~( 170 ) + 'deg)' });
+			SEND_EFFECT_METHOD({ x:character_entity.x, y:character_entity.y, type:sdEffect.TYPE_TELEPORT, filter:'hue-rotate(' + ~~( 170 ) + 'deg)' });
 		}
 
 		if ( skin_class === sdFactionskin.SKIN_COUNCIL_VANGUARD ) // Council Vanguard
@@ -247,8 +247,8 @@ class sdFactionskin extends sdEntity
 			character_entity.matter = 300;
 			character_entity.matter_max = 300; // Let player leech matter off the bodies
 
-			character_entity.hea = 1000;
-			character_entity.hmax = 1000;
+			character_entity.hea = 800;
+			character_entity.hmax = 800;
 
 			character_entity._ai = { direction: ( character_entity.x > ( sdWorld.world_bounds.x1 + sdWorld.world_bounds.x2 ) / 2 ) ? -1 : 1 };
 			character_entity._ai_level = 10;
@@ -258,10 +258,10 @@ class sdFactionskin extends sdEntity
 			character_entity._jetpack_fuel_multiplier = 0.25; // Less fuel usage when jetpacking
 			character_entity._ai_team = 3; // AI team 3 is for the Council
 			character_entity._matter_regeneration_multiplier = 10; // Their matter regenerates 10 times faster than normal, unupgraded players
-			sdSound.PlaySound({ name:'council_teleport', x:character_entity.x, y:character_entity.y, pitch: 1, volume:1 });
+			PLAY_SOUND_METHOD({ name:'council_teleport', x:character_entity.x, y:character_entity.y, pitch: 1, volume:1 });
 			character_entity._ai.next_action = 5;
 
-			sdWorld.SendEffect({ x:character_entity.x, y:character_entity.y, type:sdEffect.TYPE_TELEPORT, filter:'hue-rotate(' + ~~( 170 ) + 'deg)' });
+			SEND_EFFECT_METHOD({ x:character_entity.x, y:character_entity.y, type:sdEffect.TYPE_TELEPORT, filter:'hue-rotate(' + ~~( 170 ) + 'deg)' });
 		}
 
 		if ( skin_class === sdFactionskin.SKIN_SARRONIAN ) // Sarronian E3 Unit
@@ -356,8 +356,8 @@ class sdFactionskin extends sdEntity
 			character_entity.matter = 200;
 			character_entity.matter_max = 200;
 
-			character_entity.hea = 650;
-			character_entity.hmax = 650;
+			character_entity.hea = 500;
+			character_entity.hmax = 500;
 
 			character_entity._ai = { direction: ( character_entity.x > ( sdWorld.world_bounds.x1 + sdWorld.world_bounds.x2 ) / 2 ) ? -1 : 1 };
 			character_entity._ai_level = Math.floor( 2 + Math.random() * 3 ); // AI Levels
@@ -391,8 +391,8 @@ class sdFactionskin extends sdEntity
 			character_entity.matter = 200;
 			character_entity.matter_max = 200;
 
-			character_entity.hea = 650;
-			character_entity.hmax = 650;
+			character_entity.hea = 500;
+			character_entity.hmax = 500;
 
 			character_entity._ai = { direction: ( character_entity.x > ( sdWorld.world_bounds.x1 + sdWorld.world_bounds.x2 ) / 2 ) ? -1 : 1 };
 			character_entity._ai_level = Math.floor( 2 + Math.random() * 3 ); // AI Levels
@@ -426,8 +426,8 @@ class sdFactionskin extends sdEntity
 			character_entity.matter = 400;
 			character_entity.matter_max = 400;
 
-			character_entity.hea = 1100;
-			character_entity.hmax = 1100;
+			character_entity.hea = 900;
+			character_entity.hmax = 900;
 			character_entity.s = 110; // Tougher so bigger target
 
 			character_entity._ai = { direction: ( character_entity.x > ( sdWorld.world_bounds.x1 + sdWorld.world_bounds.x2 ) / 2 ) ? -1 : 1 };
@@ -594,25 +594,26 @@ class sdFactionskin extends sdEntity
 			"helmet40":true,
 			"body25":true,
 			"legs25":true,
-			"voice10":true};
+			"voice13":true};
 
 			character_entity.matter = 800;
 			character_entity.matter_max = 800;
 
-			character_entity.hea = 8500; // 105 so railgun requires at least headshot to kill and body shot won't cause bleeding
-			character_entity.hmax = 8500;
+			character_entity.hea = 1000;
+			character_entity.hmax = 1000;
 
 			character_entity._ai = { direction: ( character_entity.x > ( sdWorld.world_bounds.x1 + sdWorld.world_bounds.x2 ) / 2 ) ? -1 : 1 };
 
 			character_entity._ai_level = 4;
-			character_entity._ai_gun_slot = -1;
+			character_entity.gun_slot = -1;
+			character_entity._ai_allow_weapon_switch = false;
 
 			character_entity._matter_regeneration = 1 + character_entity._ai_level; // At least some ammo regen
 			character_entity._jetpack_allowed = true; // Jetpack
 			character_entity._jetpack_fuel_multiplier = 0.25; // Less fuel usage when jetpacking
 			character_entity._ai_team = 1; // AI team 1 is for Falkoks, preparation for future AI factions
 			character_entity._matter_regeneration_multiplier = 10; // Their matter regenerates 10 times faster than normal, unupgraded players
-			character_entity.s = 250;
+			character_entity.s = 150;
 			character_entity._jetpack_power = 4;
 		}
 
@@ -756,7 +757,7 @@ class sdFactionskin extends sdEntity
 
 			if ( Math.random() < 0.25 )
 			{
-				sdEntity.entities.push( new sdGun({ x:character_entity.x, y:character_entity.y, class:sdGun.CLASS_EMERGENCY_INSTRUCTOR }) );
+				ENTITIES_ARRAY.push( new GUN_CLASS({ x:character_entity.x, y:character_entity.y, class:sdGun.CLASS_EMERGENCY_INSTRUCTOR }) );
 			}
 		}
 
@@ -901,6 +902,8 @@ class sdFactionskin extends sdEntity
 		character_entity.body = sdWorld.ConvertPlayerDescriptionToBody( character_settings );
 		character_entity.legs = sdWorld.ConvertPlayerDescriptionToLegs( character_settings );
 		character_entity.title = character_settings.hero_name;
+		
+		character_entity.onSkinChanged();
 	}
 }
 //sdFactions.init_class();

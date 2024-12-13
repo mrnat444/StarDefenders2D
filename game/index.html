@@ -11,6 +11,9 @@
 	<meta name="language" content="English">
 	<meta name="revisit-after" content="30 days">
 	<link rel="stylesheet" href="style.css">
+
+	<link rel="icon" href="favicon.png" type="image/png">
+
 	<script src="client/sdUserAgent.js"></script>
     </head>
     <body>
@@ -262,8 +265,8 @@
 		    <a class="server serverA" href="http://localhost:3000">localhost:3000<div>your local server will be here<br>(contact us to appear in list)</div></a>
 		    
 		    <a class="server serverB" href="https://www.gevanni.com:3000">gevanni.com:3000<div>Europe, Ukraine<br>Small main server</div></a>
-		    <a class="server serverB" href="https://www.plazmaburst2.com:8443">plazmaburst2.com:8443<div>USA, California<br>Open world main sever<br>Hosted by Coolbuddy.com</div></a>
-		    <a class="server serverB" href="https://www.plazmaburst2.com:2053">plazmaburst2.com:2053<div>USA, California<br>Small server with weekly resets<br>Hosted by Coolbuddy.com</div></a>
+		    <a class="server serverB" href="https://www.plazmaburst2.com:8443">plazmaburst2.com:8443<div>USA, California<br>High difficulty main server<br>Hosted by Coolbuddy.com</div></a>
+		    <!--<a class="server serverB" href="https://www.plazmaburst2.com:2053">plazmaburst2.com:2053<div>USA, California<br>Default config main server<br>Hosted by Coolbuddy.com</div></a>-->
 		    
 		    
 		    
@@ -272,7 +275,8 @@
 		    <a class="server serverC" href="https://stardefenders.io:3002">stardefenders.io:3002<div>Canada, Quebec<br>Paceful server<br>Hosted by mrmcshroom</div></a>
 		    <a class="server serverC" href="https://stardefenders.io:4000">stardefenders.io:4000<div>Canada, Quebec<br>Hosted by mrmcshroom, managed by Booraz</div></a>
 		    <a class="server serverF" href="https://prosuwanted.ru:3000">prosuwanted.ru:3000<div>Russia, St Petersburg<br>Hosted by prosuWANTED2001</div></a>
-		    <!--<a class="server serverD" href="https://www.plazmaburst2.com:2053">plazmaburst2.com:2053<div>USA, California<br>Open world anarchy server<br>Managed by nas333</div></a>-->
+		    <!--<a class="server serverD" href="https://www.plazmaburst2.com:2053">plazmaburst2.com:2053<div>USA, California<br>Peaceful server<br>Managed by nas333</div></a>-->
+		    <a class="server serverD" href="https://www.plazmaburst2.com:2053">plazmaburst2.com:2053<div>USA, California<br>Peaceful server<br>Managed by AverageSD</div></a>
 		    <!--<a class="server serverD" href="https://stardefenders.glitch.me">stardefenders.glitch.me<div>United States, Virginia<br>Hosted by nas333</div></a>-->
 		</div>
 	    </div>
@@ -761,7 +765,7 @@
 		return v;
 	    };
 	    
-	    let draw_once = true;
+	    //let draw_once = true;
 	    
 	    let cursor_x = 0;
 	    let cursor_y = 0;
@@ -805,7 +809,7 @@
 		}
 	    };
 	    
-	    let DrawPreview = function()
+	   /*let DrawPreview = function()
 	    {
 		if ( hovered_preview )
 	        sdWorld.time = forced_time;
@@ -869,13 +873,6 @@
 		    ent2._held_by = ent;
 		}
 		else
-		/*if ( inputs_hash[ 'start_with1' ].el.checked )
-		{
-		    ent2 = new sdGun({ x:0, y:0, class: sdGun.CLASS_PISTOL });
-		    ent._inventory[ 1 ] = ent2;
-		    ent2._held_by = ent;
-	        }
-		else*/
 		if ( inputs_hash[ 'start_with2' ].el.checked )
 		{
 		    ent2 = new sdGun({ x:0, y:0, class: sdGun.CLASS_SHOVEL });
@@ -906,10 +903,6 @@
 		{
 		    ent.fire_anim = 5 / ( ( sdWorld.time + 500 ) % 2000 ) / 250;
 		    
-		    /*
-		    //if ( !inputs_hash[ 'start_with2' ].el.checked && !inputs_hash[ 'start_with3' ].el.checked )
-		    if ( ent.gun_slot === 1 )
-		    ent2.muzzle = 5 / ( ( sdWorld.time + 500 ) % 2000 ) / 250;*/
 		}
 
 		ctx.scale( 4,4 );
@@ -1017,9 +1010,15 @@
 		}
 		
 		draw_once = false;
+	    };*/
+	
+	    globalThis.preview_fnc = ()=>{ 
+		globalThis.DrawPreview( hovered_preview, forced_time, settings_container, ctx, start_btn, inputs_hash, cursor_x, cursor_y, inputs, format, hovered_color );
+		
+		if ( globalThis.preview_interval )
+		requestAnimationFrame( globalThis.preview_fnc );
 	    };
-	    globalThis.preview_fnc = DrawPreview;
-	    globalThis.preview_interval = setInterval( globalThis.preview_fnc, 16 );
+	    globalThis.preview_interval = requestAnimationFrame( globalThis.preview_fnc );// setInterval( globalThis.preview_fnc, 16 );
 	    
 	    let conditional_elements = [];
 

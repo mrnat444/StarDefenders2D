@@ -52,7 +52,8 @@ class sdEntity
 		sdEntity.SCORE_REWARD_CHALLENGING_MOB = 5;
 		sdEntity.SCORE_REWARD_FREQUENTLY_LETHAL_MOB = 10;
 		sdEntity.SCORE_REWARD_BOSS = 30;
-		sdEntity.SCORE_REWARD_COMMON_TASK = 15;
+		//sdEntity.SCORE_REWARD_COMMON_TASK_ITEM = 3;
+		//sdEntity.SCORE_REWARD_UNCOMMON_TASK_ITEM = 15;
 		sdEntity.SCORE_REWARD_TEDIOUS_TASK = 20;
 		sdEntity.SCORE_REWARD_BIG_EVENT_TASK = 50;
 		sdEntity.SCORE_REWARD_ADMIN_CRATE = 100000;
@@ -61,6 +62,18 @@ class sdEntity
 		sdEntity.SCORE_REWARD_BROKEN_5K_CRYSTAL = 5;
 		sdEntity.SCORE_REWARD_BROKEN_CRAB_CRYSTAL = 1;
 		sdEntity.SCORE_REWARD_BROKEN_BIG_CRAB_CRYSTAL = 3;
+		sdEntity.SCORE_REWARD_TASK_ITEM_FUNCTION = ( entity )=>
+		{
+			if ( entity.is( sdWorld.entity_classes.sdCrystal ) )
+			{
+				return Math.ceil( entity.matter_max / 640 );
+			}
+			
+			if ( entity.is( sdWorld.entity_classes.sdJunk ) )
+			return Math.ceil( sdWorld.entity_classes.sdJunk.ScoreScaleByType( entity.type ) ); // 20 for artifacts, 5 for other items
+		
+			return 15; // Common task item teleportation, mostly for creatures
+		};
 		
 		/*sdEntity.MATTER_MODE_UNDECIDED = 0;
 		sdEntity.MATTER_MODE_NONE = 1;
@@ -85,7 +98,8 @@ class sdEntity
 		sdEntity.y_rest_tracker = new WeakMap(); // entity => { y, repeated_sync_count }
 		
 		//sdEntity.properties_by_class_all = new WeakMap(); // class => [ 'x', 'y' ... ]
-		sdEntity.properties_by_class_public = new WeakMap(); // class => [ 'x', 'y' ... ]
+		//sdEntity.properties_by_class_public = new WeakMap(); // class => [ 'x', 'y' ... ]
+		sdEntity.properties_by_class_public = new Map(); // _class_id => [ 'x', 'y' ... ]
 		
 		sdEntity.removed_object = { _is_being_removed: true };//404.12345;
 		sdEntity.pointer_has_been_cleared = { _inaccessible: true };//403.98765;
@@ -93,10 +107,34 @@ class sdEntity
 		sdWorld.entity_classes[ this.name ] = this; // Register for object spawn
 		
 		sdWorld.entity_classes_array = null;
+		
+		sdEntity.properties_important_upon_creation = [
+			'class',
+			'type',
+			'mission',
+			'variation', // Grass, needs for timers
+			'natural' // For proper dirt counting
+		];
+		
+		sdEntity.default_driver_position_offset = { x:0, y:0 };
+	}
+	static Create( class_ptr, params={ x:0, y:0 } ) // Does UpdateHashPosition with onMovementInRange call
+	{
+		if ( !sdWorld.is_server )
+		return null;
+		
+		let ent = new class_ptr( params );
+		sdEntity.entities.push( ent );
+		sdWorld.UpdateHashPosition( ent, false, true );
+		return ent;
 	}
 	static AllEntityClassesLoadedAndInitiated()
 	{
 		sdWorld.entity_classes_array = Object.values( sdWorld.entity_classes );
+		
+		// Make this consistent on server and client
+		sdWorld.entity_classes_array.sort( (a,b)=>{ return a.name.localeCompare( b.name ); } );
+		
 		for ( let i = 0; i < sdWorld.entity_classes_array.length; i++ )
 		sdWorld.entity_classes_array[ i ].class_id = i;
 	
@@ -105,10 +143,27 @@ class sdEntity
 		sdWorld.entity_classes_array[ i ].init();
 	}
 	
+	
+	GetRandomEntityNearby( range )
+	{
+		let an = Math.random() * Math.PI * 2;
+
+		if ( !sdWorld.CheckLineOfSight( this.x, this.y, this.x + Math.sin( an ) * range, this.y + Math.cos( an ) * range, this ) )
+		{
+			return sdWorld.last_hit_entity;
+		}
+		return null;
+	}
+	
 	static GetRandomEntity()
 	{
 		if ( sdEntity.entities.length > 0 )
-		return sdEntity.entities[ Math.floor( Math.random() * sdEntity.entities.length ) ];
+		{
+			let e = sdEntity.entities[ Math.floor( Math.random() * sdEntity.entities.length ) ];
+			
+			if ( !e._is_being_removed )
+			return e;
+		}
 	
 		return null;
 	}
@@ -116,7 +171,12 @@ class sdEntity
 	static GetRandomActiveEntity() // For drones and more things in future?
 	{
 		if ( sdEntity.active_entities.length > 0 )
-		return sdEntity.active_entities[ Math.floor( Math.random() * sdEntity.active_entities.length ) ];
+		{
+			let e = sdEntity.active_entities[ Math.floor( Math.random() * sdEntity.active_entities.length ) ];
+			
+			if ( !e._is_being_removed )
+			return e;
+		}
 	
 		return null;
 	}
@@ -179,6 +239,20 @@ class sdEntity
 			}
 		}
 	}
+	SetPhysRestOn( best_ent )
+	{
+		if ( typeof this._phys_last_rest_on !== 'undefined' )
+		if ( this._phys_last_rest_on !== best_ent )
+		{
+			let old_rest_on = this._phys_last_rest_on;
+
+			this._phys_last_rest_on = best_ent;
+
+			if ( old_rest_on )
+			if ( !old_rest_on._is_being_removed )
+			old_rest_on.ManageTrackedPhysWakeup();
+		}
+	}
 	ManageTrackedPhysWakeup() // Can make sense to call this on entity deletion too
 	{
 		//var arr = sdEntity.phys_stand_on_map.get( this );
@@ -212,6 +286,15 @@ class sdEntity
 			//sdEntity.phys_stand_on_map.delete( this );
 			this._phys_entities_on_top = null;
 		}
+		
+		//if ( this._is_being_removed )
+		/*if ( this._phys_last_rest_on )
+		{
+			this._phys_last_rest_on.ManageTrackedPhysWakeup();
+			
+			if ( this._is_being_removed )
+			this._phys_last_rest_on = null;
+		}*/
 	}
 	
 	IsGlobalEntity() // Should never change
@@ -410,9 +493,10 @@ class sdEntity
 			attacker = sdEntity.entities_by_net_id_cache_map.get( this._last_attacker_net_id );
 		
 			if ( attacker )
-			if ( attacker._is_being_removed || ( attacker.hea || attacker._hea || 0 ) <= 0 || !attacker.IsPlayerClass() )
+			if ( attacker._is_being_removed || ( attacker.hea || attacker._hea || 0 ) <= 0 || !attacker.IsPlayerClass() || !attacker._socket )
 			attacker = null;
-
+		
+			if ( attacker )
 			sdWorld.GiveScoreToPlayerEntity( amount, this, true, attacker );
 		}
 	}
@@ -458,6 +542,14 @@ class sdEntity
 	VehicleHidesLegs()
 	{
 		return true;
+	}
+	VehicleAllowsDriverCombat( character )
+	{
+		return false;
+	}
+	GetDriverPositionOffset( character )
+	{
+		return sdEntity.default_driver_position_offset;
 	}
 	GetDriverSlotsCount() // Not specfiying this will cause phantom effect on drivers after entity was destroyed
 	{
@@ -690,6 +782,10 @@ class sdEntity
 			if ( hit_what._hiberstate !== sdEntity.HIBERSTATE_REMOVED )
 			hit_what.SetHiberState( sdEntity.HIBERSTATE_ACTIVE );
 		}
+	}
+	
+	onBeforeLongRangeTeleport( lrtp ) // Called before snapshot is taken
+	{
 	}
 	
 	get bounce_intensity()
@@ -1846,9 +1942,7 @@ class sdEntity
 						if ( this.y + this._hitbox_y2 <= best_ent.y + best_ent._hitbox_y1 )
 						if ( this.x + this._hitbox_x1 <= best_ent.x + best_ent._hitbox_x2 )
 						if ( this.x + this._hitbox_x2 >= best_ent.x + best_ent._hitbox_x1 )
-						{
-							this._phys_last_rest_on = best_ent;
-						}
+						this.SetPhysRestOn( best_ent );
 					}
 
 					GSPEED = GSPEED * ( 1 - best_t );
@@ -2472,6 +2566,82 @@ class sdEntity
 	GetBleedEffectFilter()
 	{
 		return '';
+	}
+	
+	CanBuryIntoBlocks() // Can this entity bury inside sdBlock?
+	{
+		return 0; // 0 = no blocks, 1 = natural blocks, 2 = corruption, 3 = flesh blocks	
+	}
+	
+	AttemptBlockBurying( custom_ent_tag = null )
+	{
+		if ( !sdWorld.is_server || this.CanBuryIntoBlocks() === 0 )
+		return;
+	
+		let no_players_near = true;
+		let i;			
+		for ( i = 0; i < sdWorld.sockets.length; i++ )
+		if ( sdWorld.sockets[ i ].character )
+		{
+			if ( sdWorld.inDist2D_Boolean( sdWorld.sockets[ i ].character.x, sdWorld.sockets[ i ].character.y, this.x, this.y, 500 ) ) // A player is too close to it?
+			{
+				no_players_near = false; // Prevent hibernation
+				break;
+			}
+		}
+		if ( no_players_near )
+		{
+			let potential_hibernation_blocks = sdWorld.GetAnythingNear( this.x, this.y, 96, null, [ 'sdBlock' ] ); // Look for blocks
+			// sdWorld.shuffleArray( potential_hibernation_blocks ); // Not sure if needed? Though check will mostly start from left to right of the entity.
+			for ( i = 0; i < potential_hibernation_blocks.length; i++ )
+			{
+				
+				let block = potential_hibernation_blocks[ i ];
+							
+				if ( block )
+				{
+					if ( this.CanBuryIntoBlocks() === 1 ) // 1st scenario, natural blocks
+					{
+						if ( !block._is_being_removed && block._natural && !block._contains_class && block.material !== 7 && block.material !== 9 ) // Natural block, no flesh or corruption and nothing inside it?
+						{
+							if ( !custom_ent_tag )
+							block._contains_class = this.GetClass(); // Put the entity in there
+							else
+							block._contains_class = custom_ent_tag;
+							this.remove(); // Disappear
+							this._broken = false;
+							break;
+						}
+					}
+					if ( this.CanBuryIntoBlocks() === 2 ) // 2nd scenario, corrupted blocks
+					{
+						if ( !block._is_being_removed && block._natural && !block._contains_class && block.material === 7 ) // Natural corrupted block and nothing inside it?
+						{
+							if ( !custom_ent_tag )
+							block._contains_class = this.GetClass(); // Put the entity in there
+							else
+							block._contains_class = custom_ent_tag;
+							this.remove(); // Disappear
+							this._broken = false;
+							break;
+						}
+					}
+					if ( this.CanBuryIntoBlocks() === 3 ) // 3rd scenario, flesh blocks
+					{
+						if ( !block._is_being_removed && block._natural && !block._contains_class && block.material === 9 ) // Natural flesh block and nothing inside it?
+						{
+							if ( !custom_ent_tag )
+							block._contains_class = this.GetClass(); // Put the entity in there
+							else
+							block._contains_class = custom_ent_tag;
+							this.remove(); // Disappear
+							this._broken = false;
+							break;
+						}
+					}
+				}
+			}
+		}
 	}
 	
 	PlayDamageEffect( xx, yy, scale=1 )
@@ -3401,7 +3571,7 @@ class sdEntity
 	{
 		return true;
 	}
-	GetSnapshot( current_frame, save_as_much_as_possible=false, observer_entity=null ) // Some classes like sdDeepSleep do override it(!)
+	GetSnapshot( current_frame, save_as_much_as_possible=false, observer_entity=null, include_class_and_net_id=true ) // Some classes like sdDeepSleep do override it(!)
 	{
 		let returned_object;
 		
@@ -3425,10 +3595,14 @@ class sdEntity
 				// This code prevents conditional property visibility, but does some optimisations
 				if ( this._snapshot_cache === null )
 				{
+					if ( include_class_and_net_id )
 					returned_object = {
 						_net_id: this._net_id,
 						_class: this.GetClass()
 					};
+					else
+					returned_object = {};
+				
 					this._snapshot_cache = returned_object;
 				}
 				else
@@ -3614,6 +3788,7 @@ class sdEntity
 									this[ prop ] === null || 
 									typeof this[ prop ] === 'boolean' || 
 									prop === '_shielded' || // It became way too common and means only one thing anyway. LRTPs and CCs don't check for it and it causes them to lose protection on server reboot
+									prop === '_shield_ent' || // Bubble shields
 									this.ExtraSerialzableFieldTest( prop ) 
 								  ) 
 								) 
@@ -3641,12 +3816,12 @@ class sdEntity
 			}
 			else
 			{
-				let kinds = sdEntity.properties_by_class_public.get( this.__proto__.constructor );
+				let kinds = sdEntity.properties_by_class_public.get( this._class_id );
 				
 				if ( kinds === undefined )
 				{
 					kinds = [];
-					sdEntity.properties_by_class_public.set( this.__proto__.constructor, kinds );
+					sdEntity.properties_by_class_public.set( this._class_id, kinds );
 				}
 				
 				let current_kind = this.material || this.type || this.kind || this.class || this.variation || 0;
@@ -3712,6 +3887,12 @@ class sdEntity
 						}*/
 					}
 					
+					/*if ( this.GetClass() === 'sdGun' )
+					if ( prop === 'sd_filter' )
+					{
+						let a = 1;
+					}*/
+					
 					if ( !save_as_much_as_possible && typeof v === 'number' ) // Do not do number rounding if world is being saved
 					{
 						if ( prop === 'sx' || prop === 'sy' || prop === 'scale' )
@@ -3720,7 +3901,16 @@ class sdEntity
 						returned_object[ prop ] = Math.round( v );
 					}
 					else
-					returned_object[ prop ] = v;
+					{
+						// Object/array copies are required since sdByteShifter otherwise won't be able to tell if values are different since same pointers will be stored on all messages
+						if ( v instanceof Array )
+						returned_object[ prop ] = v.slice();
+						else
+						if ( v instanceof Object )
+						returned_object[ prop ] = Object.assign( {}, v );
+						else
+						returned_object[ prop ] = v;
+					}
 				}
 			}
 		}
@@ -3756,20 +3946,10 @@ class sdEntity
 	{
 		const my_entity = sdWorld.my_entity;
 		
-		//if ( snapshot._net_id !== this._net_id ) Will happen in case of copying
-		//debugger;
-		if ( snapshot._class !== this.GetClass() )
+		/*if ( snapshot._class !== this.GetClass() )
 		if ( snapshot._class !== 'auto' )
-		debugger;
+		debugger;*/
 
-		/*if ( snapshot._class === 'sdGrass' )
-		if ( snapshot.variation === 4 || snapshot.variation === 6 )
-		{
-			trace( 'ApplySnapshot called for', snapshot );
-		}*/
-	
-		//let my_entity_protected_vars = null;
-		
 		if ( this.isSnapshotDecodingAllowed === sdEntity.prototype.isSnapshotDecodingAllowed || this.isSnapshotDecodingAllowed( snapshot ) )
 		for ( var prop in snapshot )
 		{
@@ -3834,6 +4014,17 @@ class sdEntity
 							if ( prop === '_listeners' )
 							snapshot[ prop ] = null;
 						}
+						
+						
+
+						/*if ( !sdWorld.is_server )
+						if ( this.is( sdWorld.entity_classes.sdDeepSleep ) )
+						if ( prop === 'x' )
+						if ( snapshot[ prop ] === 0 )
+						if ( this.x !== 0 )
+						debugger;*/
+			
+			
 						
 						//if ( typeof this[ prop ] !== 'undefined' ) // Disallow creation of new properties
 						if ( this.hasOwnProperty( prop ) )
@@ -4125,7 +4316,7 @@ class sdEntity
 		
 		// Some entities like crystal crabs have separate set of properties
 		
-		if ( typeof snapshot.class !== 'undefined' )
+		/*if ( typeof snapshot.class !== 'undefined' )
 		params.class = snapshot.class;
 		
 		if ( typeof snapshot.type !== 'undefined' )
@@ -4138,7 +4329,14 @@ class sdEntity
 		params.variation = snapshot.variation;
 		
 		if ( typeof snapshot._natural !== 'undefined' ) // For proper dirt counting
-		params.natural = snapshot._natural;
+		params.natural = snapshot._natural;*/
+		for ( let i = 0; i < sdEntity.properties_important_upon_creation.length; i++ )
+		{
+			let prop = sdEntity.properties_important_upon_creation[ i ];
+			
+			if ( typeof snapshot[ prop ] !== 'undefined' )
+			params[ prop ] = snapshot[ prop ];
+		}
 		
 		//var ret = new sdWorld.entity_classes[ snapshot._class ]({ x:snapshot.x, y:snapshot.y });
 		var ret = new sdWorld.entity_classes[ snapshot._class ]( params );
@@ -4157,6 +4355,9 @@ class sdEntity
 		return ret;
 	}	
 	onSnapshotApplied() // To override
+	{
+	}
+	onToggleEnabledChange()
 	{
 	}
 	//static GuessEntityName( net_id ) // For client-side coms, also for server bound extend report. Use sdWorld.ClassNameToProperName in other cases
@@ -5148,6 +5349,7 @@ class sdEntity
 		//this.RemoveAllDrivers();
 		
 		this.ManageTrackedPhysWakeup();
+		this.SetPhysRestOn( null );
 		
 		if ( !this.IsGlobalEntity() )
 		{
@@ -5458,7 +5660,7 @@ class sdEntity
 	
 	
 	
-	isWaterDamageResistant()
+	isFireAndAcidDamageResistant()
 	{
 		return false;
 	}
