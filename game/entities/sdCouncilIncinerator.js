@@ -17,6 +17,7 @@ import sdJunk from './sdJunk.js';
 import sdEnemyMech from './sdEnemyMech.js';
 import sdBaseShieldingUnit from './sdBaseShieldingUnit.js';
 import sdStatusEffect from './sdStatusEffect.js';
+import sdBaseAttack from './sdBaseAttack.js';
 
 class sdCouncilIncinerator extends sdEntity
 {
@@ -68,6 +69,8 @@ class sdCouncilIncinerator extends sdEntity
 		
 		this._current_target = null; // Now used in case of players engaging without meeting CanAttackEnt conditions
 		this._follow_target = null;
+		
+		this._base_attack = params._base_attack || null; // The base attack this entity is currently part of
 		
 		
 		this._move_dir_x = 0; // Keep these from 0 to 1 in order to have line of sight checks not scale with speed
@@ -534,7 +537,11 @@ class sdCouncilIncinerator extends sdEntity
 
 					{
 						let target;
+						if ( this._base_attack && !this._base_attack._is_being_removed && ( !this._follow_target || this._follow_target._is_being_removed || ( this._follow_target.hea || this._follow_target._hea || 0 ) <= 0 ) )
+						this._follow_target = this._base_attack.GetRandomBaseTarget( this );
+						else
 						this._follow_target = this.GetRandomEntityNearby();
+
 						if ( this._follow_target )
 						target = this._follow_target;
 						if ( target )
@@ -652,6 +659,8 @@ class sdCouncilIncinerator extends sdEntity
 						this._move_dir_y = Math.sin( an );
 						this._move_dir_speed_scale = 1;
 					}
+
+					sdBaseAttack.UpdateBaseAttackProp( this );
 				}
 				else
 				this._move_dir_timer -= GSPEED;

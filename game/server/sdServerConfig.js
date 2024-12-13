@@ -131,6 +131,12 @@ class sdServerConfigFull extends sdServerConfigShort
 	
 	static player_vs_player_damage_scale = 3;
 	
+	static allow_enemy_attacks_on_player_bases = true; // Allows sdBaseAttack entities to spawn and start attacks against player bases
+	static base_attacks_min_time_between_each = 1000 * 60 * 60 * 6 // Average time between attacks decreases over time, up to this amount
+	static base_attacks_max_time_between_each = 1000 * 60 * 60 * 24 * 2 // Average time between attacks decreases over time, starting at this amount
+	static base_attacks_scale_rate = 50; // sdBaseAttack entities grow more powerful by this much after every attack
+	static base_attacks_max_active_at_once = 1; // How many sdBaseAttack entities can have ongoing attacks at the same time
+	
 	static ShouldBlockContainAnything ( x,y,hp_mult )
 	{
 		return ( Math.random() > 0.85 / hp_mult ); // hp_mult scales with hitpoints of a sdBlock, usually depth-dependant

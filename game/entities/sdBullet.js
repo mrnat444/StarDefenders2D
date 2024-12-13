@@ -415,6 +415,9 @@ class sdBullet extends sdEntity
 			if ( from_entity === this._owner || from_entity === this._owner2 || ( !this._hook && this._damage >= 0 && from_entity.is( sdBadDog ) && from_entity.master && ( this._owner === from_entity.master || this._owner2 === from_entity.master ) ) )
 			return false;
 
+			if ( this._owner && from_entity && this._owner._base_attack && this._owner._base_attack === from_entity._base_attack )
+			return false;
+
 			if ( from_entity.is( sdBullet ) )
 			{
 				if ( this._owner )

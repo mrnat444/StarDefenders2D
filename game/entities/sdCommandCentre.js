@@ -105,6 +105,8 @@ class sdCommandCentre extends sdEntity
 		
 		this._shielded = null; // Is this entity protected by a base defense unit?
 		
+		this.base_attack_threat = null; // The base attack targeting this entity
+		
 		//this.signal_strength = 100000000;
 		
 		//this.self_destruct_on = sdWorld.time + sdCommandCentre.time_to_live_without_matter_keepers_near; // Exists for 24 hours by default
@@ -383,6 +385,27 @@ class sdCommandCentre extends sdEntity
 	{
 		sdEntity.TooltipUntranslated( ctx, T( this.title ) + ' (CC-'+this.biometry+')', 0, -10 );
 		
+		//if ( sdWorld.server_config.allow_enemy_attacks_on_player_bases )
+		{
+			if ( this.base_attack_threat && !this.base_attack_threat._is_being_removed )
+			{
+				if ( this.base_attack_threat.active )
+				sdEntity.Tooltip( ctx, 'Attackers have arrived', 0, -3, '#ff6666' );
+				else
+				{
+					let attack_time = ( this.base_attack_threat.next_attack_time - sdWorld.time ) / ( 1000 * 60 );
+
+					if ( attack_time < 60 )
+					sdEntity.TooltipUntranslated( ctx, Math.ceil( attack_time ) + T(' minute' + ( Math.ceil( attack_time ) > 1 ? 's' : '') + ' until attackers arrive'), 0, -3, 'ffff66' );
+					else
+					if ( attack_time < 60 * 24 )
+					sdEntity.TooltipUntranslated( ctx, Math.round( attack_time / 60 ) + T(' hour' + ( Math.round( attack_time / 60 ) > 1 ? 's' : '') + ' until attackers arrive'), 0, -3, 'ffff66' );
+					else
+					sdEntity.Tooltip( ctx, 'No attacks detected', 0, -3, '#66ff66' );
+				}
+			}
+		}
+
 		/*if ( this.self_destruct_on > sdWorld.time + sdCommandCentre.time_to_live_without_matter_keepers_near - 10 * 1000 )
 		sdEntity.Tooltip( ctx, 'No expiration', 0, -3, '#66ff66' );
 		else

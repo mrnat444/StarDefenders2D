@@ -22,6 +22,7 @@ import sdCrystal from './sdCrystal.js';
 import sdCharacter from './sdCharacter.js';
 //import sdPlayerSpectator from './sdPlayerSpectator.js';
 import sdZektaronDreadnought from './sdZektaronDreadnought.js';
+import sdBaseAttack from './sdBaseAttack.js';
 
 
 import sdPathFinding from '../ai/sdPathFinding.js';
@@ -238,6 +239,8 @@ class sdCube extends sdEntity
 		
 		this._current_target = null; // Mostly related to following
 		this._pathfinding = null;
+		
+		this._base_attack = params._base_attack || null; // The base attack this entity is currently part of
 		
 		this._alert_intensity = 0; // Grows until some value and only then it will shoot
 		
@@ -928,24 +931,29 @@ class sdCube extends sdEntity
 					let closest_di = Infinity;
 					let closest_di_real = Infinity;
 
-					for ( let i = 0; i < sdWorld.sockets.length; i++ )
+					if ( this._base_attack && !this._base_attack._is_being_removed )
+					closest = this._base_attack.GetRandomBaseTarget( this, true );
+					else
 					{
-						if ( sdWorld.sockets[ i ].character )
-						if ( sdWorld.sockets[ i ].character.hea > 0 )
-						if ( !sdWorld.sockets[ i ].character._is_being_removed )
+						for ( let i = 0; i < sdWorld.sockets.length; i++ )
 						{
-							let di = sdWorld.Dist2D( this.x, this.y, sdWorld.sockets[ i ].character.x, sdWorld.sockets[ i ].character.y );
-							let di_real = di;
-							
-							if ( sdCube.IsTargetFriendly( sdWorld.sockets[ i ].character, this ) )
-							di += 1000;
-							
-							if ( di < closest_di )
-							if ( !sdWorld.sockets[ i ].character.is( sdCharacter ) || sdWorld.sockets[ i ].character.build_tool_level >= 5 ) // Do not crowd near new players
+							if ( sdWorld.sockets[ i ].character )
+							if ( sdWorld.sockets[ i ].character.hea > 0 )
+							if ( !sdWorld.sockets[ i ].character._is_being_removed )
 							{
-								closest_di = di;
-								closest_di_real = di_real;
-								closest = sdWorld.sockets[ i ].character;
+								let di = sdWorld.Dist2D( this.x, this.y, sdWorld.sockets[ i ].character.x, sdWorld.sockets[ i ].character.y );
+								let di_real = di;
+								
+								if ( sdCube.IsTargetFriendly( sdWorld.sockets[ i ].character, this ) )
+								di += 1000;
+								
+								if ( di < closest_di )
+								if ( !sdWorld.sockets[ i ].character.is( sdCharacter ) || sdWorld.sockets[ i ].character.build_tool_level >= 5 ) // Do not crowd near new players
+								{
+									closest_di = di;
+									closest_di_real = di_real;
+									closest = sdWorld.sockets[ i ].character;
+								}
 							}
 						}
 					}
@@ -993,6 +1001,8 @@ class sdCube extends sdEntity
 						this._move_dir_x = Math.cos( an );
 						this._move_dir_y = Math.sin( an );
 					}
+
+					sdBaseAttack.UpdateBaseAttackProp( this );
 				}
 				else
 				this._move_dir_timer -= GSPEED;
@@ -1109,6 +1119,9 @@ class sdCube extends sdEntity
 									}
 								}
 							}
+
+							if ( this._base_attack && !this._base_attack._is_being_removed )
+							targets.push( this._base_attack.GetRandomBaseTarget( this ) );
 						}
 					}
 					

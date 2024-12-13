@@ -28,6 +28,19 @@ class sdFactions extends sdEntity
 		sdFactions.FACTION_STAR_DEFENDERS_ARREST = 11; // Arrest Star Defender
 		sdFactions.FACTION_TIME_SHIFTER = 12; // Time Shifter ( Boss )
 
+
+		sdFactions.TEAM_STAR_DEFENDERS = 0; // Star Defenders // Rescue Star Defender
+		sdFactions.TEAM_FALKOK = 1; // Falkoks
+		sdFactions.TEAM_ERTHAL = 2; // Erthals
+		sdFactions.TEAM_COUNCIL = 3; // Council
+		sdFactions.TEAM_SARRONIAN = 4; // Sarronians & Zektaron
+		sdFactions.TEAM_VELOX = 5; // Velox
+		sdFactions.TEAM_CRIMINAL_STAR_DEFENDERS = 6; // Arrest Star Defender
+		sdFactions.TEAM_SETR = 7; // Setr
+		sdFactions.TEAM_TZYRG = 8; // Tzyrg
+		sdFactions.TEAM_SHURG = 9; // Shurg
+		sdFactions.TEAM_TIME_SHIFTER = 10; // Time Shifter ( Boss )
+
 		sdWorld.entity_classes[ this.name ] = this; // Register for object spawn
 	}
 

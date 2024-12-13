@@ -47,6 +47,13 @@ class sdBaseShieldingUnit extends sdEntity
 		sdBaseShieldingUnit.TYPE_DAMAGE_PERCENTAGE = 3; // Only portion of damage can pass through and damage entities
 		sdBaseShieldingUnit.TYPE_FACTION_SHIELD = 4;
 		
+		sdBaseShieldingUnit.targetable_shield_types_for_base_attacks = [ 
+
+			sdBaseShieldingUnit.TYPE_CRYSTAL_CONSUMER, 
+			sdBaseShieldingUnit.TYPE_MATTER, 
+			sdBaseShieldingUnit.TYPE_DAMAGE_PERCENTAGE 
+		];
+
 		sdBaseShieldingUnit.damage_reduction_shield_max_level = 50;
 		
 		sdBaseShieldingUnit.img_unit = sdWorld.CreateImageFromFile( 'shield_unit_sheet' );
@@ -180,6 +187,8 @@ class sdBaseShieldingUnit extends sdEntity
 		// 1 slot
 		
 		this._last_value_share = 0;
+
+		this._base_attack_threat = null; // The base attack targeting this entity
 		
 		sdBaseShieldingUnit.all_shield_units.push( this );
 	}

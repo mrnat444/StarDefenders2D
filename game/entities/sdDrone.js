@@ -16,6 +16,7 @@ import sdJunk from './sdJunk.js';
 import sdCrystal from './sdCrystal.js';
 import sdLost from './sdLost.js';
 //import sdPlayerSpectator from './sdPlayerSpectator.js';
+import sdBaseAttack from './sdBaseAttack.js';
 
 import sdPathFinding from '../ai/sdPathFinding.js';
 
@@ -147,6 +148,8 @@ class sdDrone extends sdEntity
 		
 		this._current_target = null;
 		this._pathfinding = null;
+		
+		this._base_attack = params._base_attack || null; // The base attack this entity is currently part of
 		
 		this.hurt_timer = 0;
 
@@ -694,6 +697,8 @@ class sdDrone extends sdEntity
 		{
 			if ( !this._is_minion_of || this._is_minion_of._is_being_removed )
 			this._is_minion_of = null;
+
+			sdBaseAttack.UpdateBaseAttackProp( this );
 		}
 		
 
@@ -902,12 +907,17 @@ class sdDrone extends sdEntity
 				// No target
 				if ( sdWorld.is_server )
 				{
+					if ( this._base_attack && !this._base_attack._is_being_removed )
+					this.SetTarget( this._base_attack.GetRandomBaseTarget( this, false ) );
+					else
 					{
-						this.SetTarget( sdCharacter.GetRandomEntityNearby( this ) );
-					}
-					if ( Math.random() < 0.02 && !this._current_target ) // Still no target?
-					{
-						this.SetTarget( this.GetRandomTarget() );
+						{
+							this.SetTarget( sdCharacter.GetRandomEntityNearby( this ) );
+						}
+						if ( Math.random() < 0.02 && !this._current_target ) // Still no target?
+						{
+							this.SetTarget( this.GetRandomTarget() );
+						}
 					}
 					
 					if ( this._current_target )
@@ -1104,6 +1114,10 @@ class sdDrone extends sdEntity
 					if ( pathfinding_result && pathfinding_result.attack_target )
 					{
 						nears.push( { ent: pathfinding_result.attack_target, rank: 0, ignore_line_of_sight: true } ); // Not a priority usually
+					}
+					if ( this._base_attack && !this._base_attack._is_being_removed )
+					{
+						nears.push( { ent: this._base_attack.GetRandomBaseTarget( this ), rank: 0, ignore_line_of_sight: true } );
 					}
 
 					for ( var i = 0; i < nears.length; i++ )

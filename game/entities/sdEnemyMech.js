@@ -14,6 +14,8 @@ import sdBlock from './sdBlock.js';
 import sdCharacter from './sdCharacter.js';
 import sdCube from './sdCube.js';
 import sdBubbleShield from './sdBubbleShield.js';
+import sdBaseAttack from './sdBaseAttack.js';
+
 class sdEnemyMech extends sdEntity
 {
 	static init_class()
@@ -78,6 +80,8 @@ class sdEnemyMech extends sdEntity
 		
 		this._current_target = null; // Now used in case of players engaging without meeting CanAttackEnt conditions
 		this._follow_target = null;
+		
+		this._base_attack = params._base_attack || null; // The base attack this entity is currently part of
 		
 		//this._last_stand_on = null;
 		//this._last_jump = sdWorld.time;
@@ -488,7 +492,11 @@ class sdEnemyMech extends sdEntity
 
 					{
 						let target;
+						if ( this._base_attack && !this._base_attack._is_being_removed && ( !this._follow_target || this._follow_target._is_being_removed || ( this._follow_target.hea || this._follow_target._hea || 0 ) <= 0 ) )
+						this._follow_target = this._base_attack.GetRandomBaseTarget( this );
+						else
 						this._follow_target = this.GetRandomEntityNearby();
+
 						if ( this._follow_target )
 						target = this._follow_target;
 						if ( target )
@@ -548,6 +556,11 @@ class sdEnemyMech extends sdEntity
 
 							if ( !sdWorld.CheckLineOfSight( this.x, this.y, closest.x, closest.y, this, sdCom.com_visibility_ignored_classes, null ) )
 							{
+								if ( this._base_attack && !this._base_attack._is_being_removed )
+								if ( sdWorld.last_hit_entity && !sdWorld.last_hit_entity._is_being_removed && this._follow_target !== sdWorld.last_hit_entity )
+								//if ( this._base_attack.IsEntityTargeted( sdWorld.last_hit_entity ) )
+								this._follow_target = sdWorld.last_hit_entity;
+
 								for ( let ideas = Math.max( 5, 40 / sdEnemyMech.mechs_counter ); ideas > 0; ideas-- )
 								{
 									var a1 = Math.random() * Math.PI * 2;
@@ -613,6 +626,8 @@ class sdEnemyMech extends sdEntity
 						this._move_dir_y = Math.sin( an );
 						this._move_dir_speed_scale = 1;
 					}
+
+					sdBaseAttack.UpdateBaseAttackProp( this );
 				}
 				else
 				this._move_dir_timer -= GSPEED;
@@ -681,6 +696,10 @@ class sdEnemyMech extends sdEntity
 					
 					let targets = sdEnemyMech.BossLikeTargetScan( this, sdEnemyMech.attack_range, sdEnemyMech.reusable_vision_blocking_entities_array, sdEnemyMech.reusable_vision_block_ignored_entities_array );
 					
+					if ( this._base_attack && !this._base_attack._is_being_removed )
+					if ( this._follow_target && !this._follow_target._is_being_removed )//&& this._base_attack.IsEntityTargeted( this._follow_target ) )
+					targets.push( this._follow_target );
+
 					for ( let i = 0; i < targets.length; i++ )
 					{
 						this._follow_target = targets[ i ];

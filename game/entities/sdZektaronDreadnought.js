@@ -17,6 +17,7 @@ import sdGib from './sdGib.js';
 import sdShop from '../client/sdShop.js';
 import sdLost from './sdLost.js';
 import sdEnemyMech from './sdEnemyMech.js';
+import sdBaseAttack from './sdBaseAttack.js';
 
 class sdZektaronDreadnought extends sdEntity
 {
@@ -64,6 +65,8 @@ class sdZektaronDreadnought extends sdEntity
 		
 		this._current_target = null; // Now used in case of players engaging without meeting CanAttackEnt conditions
 		this._follow_target = null;
+		
+		this._base_attack = params._base_attack || null; // The base attack this entity is currently part of
 		
 		
 		this._move_dir_x = 0; // Keep these from 0 to 1 in order to have line of sight checks not scale with speed
@@ -582,7 +585,11 @@ class sdZektaronDreadnought extends sdEntity
 
 					{
 						let target;
+						if ( this._base_attack && !this._base_attack._is_being_removed )
+						this._follow_target = this._base_attack.GetRandomBaseTarget( this );
+						else
 						this._follow_target = this.GetRandomEntityNearby();
+
 						if ( this._follow_target )
 						target = this._follow_target;
 						if ( target )
@@ -699,6 +706,8 @@ class sdZektaronDreadnought extends sdEntity
 						this._move_dir_y = Math.sin( an );
 						this._move_dir_speed_scale = 1;
 					}
+
+					sdBaseAttack.UpdateBaseAttackProp( this );
 				}
 				else
 				this._move_dir_timer -= GSPEED;

@@ -43,6 +43,7 @@ import sdBaseShieldingUnit from './entities/sdBaseShieldingUnit.js';
 import sdDeepSleep from './entities/sdDeepSleep.js';
 import sdCommandCentre from './entities/sdCommandCentre.js';
 import sdPresetEditor from './entities/sdPresetEditor.js';
+import sdBaseAttack from './entities/sdBaseAttack.js';
 
 
 import sdRenderer from './client/sdRenderer.js';
@@ -3346,6 +3347,11 @@ class sdWorld
 
 			let t11 = Date.now();
 			IncludeTimeCost( 'sdBaseShieldingUnit', t11 - t10 );
+			
+			sdBaseAttack.GlobalThink( GSPEED );
+
+			let t12 = Date.now();
+			IncludeTimeCost( 'sdBaseAttack', t12 - t11 );
 
 			// Keep it last:
 			sdWorld.frame++;

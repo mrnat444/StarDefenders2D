@@ -33,6 +33,7 @@ import sdMimic from './sdMimic.js';
 import sdShurgConverter from './sdShurgConverter.js';
 import sdBubbleShield from './sdBubbleShield.js';
 //import sdLongRangeTeleport from './sdLongRangeTeleport.js';
+import sdBaseAttack from './sdBaseAttack.js';
 
 import sdShop from '../client/sdShop.js';
 
@@ -1139,6 +1140,8 @@ THING is cosmic mic drop!`;
 		this._ai_stay_near_entity = null; // Should AI stay near an entity/protect it?
 		this._ai_stay_distance = params._ai_stay_distance || 128; // Max distance AI can stray from entity it follows/protects.
 		this._allow_despawn = true; // Use to prevent despawn of critically important characters once they are downed (task/mission-related)
+		
+		this._base_attack = params._base_attack || null; // The base attack this entity is currently part of
 		
 		this.title = params.title || ( 'Random Hero #' + this._net_id );
 		this.title_censored = 0;
@@ -2690,6 +2693,9 @@ THING is cosmic mic drop!`;
 						this.GiveScoreToLastAttacker( sdEntity.SCORE_REWARD_CHALLENGING_MOB );
 						else
 						this.GiveScoreToLastAttacker( sdEntity.SCORE_REWARD_FREQUENTLY_LETHAL_MOB );
+
+						if ( this._allow_despawn )
+						this.death_anim = sdCharacter.disowned_body_ttl - 30 * 10;
 					}
 					else
 					{
@@ -3043,7 +3049,11 @@ THING is cosmic mic drop!`;
 			{
 				this._ai.target = null;
 				
+				if ( this._base_attack && !this._base_attack._is_being_removed )
+				this._ai.target = this._base_attack.GetRandomBaseTarget( this, true );
+				else
 				this._ai.target = sdCharacter.GetRandomEntityNearby( this );
+				
 				if ( this._ai.target )
 				this.PlayAIAlertedSound( this._ai.target );
 			}
@@ -3138,7 +3148,7 @@ THING is cosmic mic drop!`;
 					if ( ( this._ai.target.hea || this._ai.target._hea || 0 ) > 0 && 
 						 !this._ai.target._is_being_removed &&
 					     this._ai.target.IsVisible( this ) && 
-						 sdWorld.Dist2D( this.x, this.y, this._ai.target.x, this._ai.target.y ) < 800 )
+						( this._base_attack || sdWorld.Dist2D( this.x, this.y, this._ai.target.x, this._ai.target.y ) < 800 ) )
 					{
 						closest = this._ai.target;
 					}
@@ -3306,6 +3316,10 @@ THING is cosmic mic drop!`;
 							if ( cur_target._ai_team === this._ai_team ) // Is this part of a friendly faction?
 							should_fire = false; // Don't target
 						}
+
+						if ( this._base_attack && !this._base_attack._is_being_removed && this._base_attack.IsEntityTargeted( cur_target ) )
+						should_fire = true;
+						else
 						if ( !sdWorld.CheckLineOfSight( check_from.x, check_from.y, this.look_x, this.look_y, check_from, sdCom.com_visibility_ignored_classes ) )
 						should_fire = false; // Don't attack through walls
 						
@@ -3434,6 +3448,8 @@ THING is cosmic mic drop!`;
 						}
 					}
 				}
+
+				sdBaseAttack.UpdateBaseAttackProp( this );
 			}
 
 			if ( this._ai.target && this._ai.target.IsVisible( this ) )
