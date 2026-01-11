@@ -283,6 +283,8 @@ class sdElement
 
 						inner_container.style.height = '100%';
 					}
+
+					//this.element.addEventListener( 'contextmenu', ( e ) => { e.preventDefault() } );
 				}
 
 				element.onmouseover = ( e )=>{ if ( e.target === this.element ) this.nativeSetHover( e, 1 ) };
@@ -589,6 +591,13 @@ class sdElement
 	{ this.element.style.marginBottom = v + 'px'; }
 	set marginRight( v )
 	{ this.element.style.marginRight = v + 'px'; }
+	set margin( v )
+	{
+		this.marginLeft = v;
+		this.marginTop = v;
+		this.marginBottom = v;
+		this.marginRight = v;
+	}
 	
 	set paddingTop( v )
 	{ this.element.style.paddingTop = v + 'px'; }

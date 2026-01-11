@@ -1088,6 +1088,28 @@ class sdModeration
 				//let full_level = sdCharacter.max_level * 300 - (6000 - 5);
 				let full_level = 60 * 300 - (6000 - 5); // sdCharacter isn't imported and above line results in a crash, keeping it like this for now, unless something else requires sdCharacter import - Booraz
 				socket.character.GiveScore( full_level, null, false );
+
+				for ( let i = 0; i < socket.character._inventory.length; i++ )
+				{
+					let gun = socket.character._inventory[ i ];
+
+					if ( gun )
+					if ( sdGun.classes[ gun.class ].is_build_gun )
+					{
+						if ( !( gun.extra instanceof Array ) )
+						gun.extra = [];
+
+						for ( let i2 = 0; i2 < sdShop.options.length; i2++ )
+						{
+							let unlock_id = sdShop.GetItemUnlockId( sdShop.options[ i ] );
+
+							if ( unlock_id )
+							if ( gun.extra.indexOf( unlock_id ) === -1 )
+							gun.extra.push( unlock_id );
+						}
+					}
+
+				}
 				
 				socket.character.matter = socket.character.matter_max;
 

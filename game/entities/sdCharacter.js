@@ -1628,6 +1628,15 @@ THING is cosmic mic drop!`;
 	
 		return -Math.PI / 2 - Math.atan2( this.y + offset.y - this.look_y, this.x + offset.x - this.look_x );
 	}
+	GetInventoryGunByClass( gun_class_id )
+	{
+		for ( let i = 0; i < this._inventory.length; i++ )
+		if ( this._inventory[ i ] )
+		if ( this._inventory[ i ].class === gun_class_id )
+		return this._inventory[ i ];
+
+		return null;
+	}
 	
 	ReloadAndCombatLogic( GSPEED )
 	{
@@ -6849,8 +6858,12 @@ THING is cosmic mic drop!`;
 			return null;
 		}
 	
+		let build_tool = initiator.GetInventoryGunByClass( sdGun.CLASS_BUILD_TOOL );
+
+		let unlock_id = sdShop.GetItemUnlockId( build_params );
 		
-		if ( ( build_params._min_build_tool_level || 0 ) > build_tool_level )
+		//if ( ( build_params._min_build_tool_level || 0 ) > build_tool_level )
+		if ( build_tool && build_tool.extra instanceof Array && unlock_id && build_tool.extra.indexOf( unlock_id ) === -1 )
 		{
 			sdCharacter.last_build_deny_reason = 'Nice hacks bro';
 			return null;

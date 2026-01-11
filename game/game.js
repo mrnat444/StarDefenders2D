@@ -467,6 +467,7 @@ let class_names = ( await ( await fetch( '/get_classes.txt' ) ).text() ).split('
 	import sdDatabaseEditor from './interfaces/sdDatabaseEditor.js';
 	import sdMotherShipStorageManager from './interfaces/sdMotherShipStorageManager.js';
 	import sdCodeEditor from './interfaces/sdCodeEditor.js';
+	import sdResearchManager from './interfaces/sdResearchManager.js';
 	
 	
 	
@@ -924,6 +925,22 @@ let enf_once = true;
 
 					}, 2000 );
 				}
+			}
+			
+			if ( sdMotherShipStorageManager.only_instance )
+			{
+				sdMotherShipStorageManager.Close();
+			}
+			else
+			if ( sdResearchManager.only_instance )
+			{
+				sdResearchManager.Close();
+			}
+			else
+			if ( sdCodeEditor.window_instances.length > 0 )
+			{
+				for ( let i = 0; i < sdCodeEditor.window_instances.length; i++ )
+				sdCodeEditor.Close( sdCodeEditor.window_instances[ i ] );
 			}
 		
 			ClearWorld();
@@ -2094,6 +2111,21 @@ let enf_once = true;
 				}
 				else
 				sdShop.Close();
+			}
+			else
+			if ( sdMotherShipStorageManager.only_instance )
+			{
+				sdMotherShipStorageManager.Close();
+			}
+			else
+			if ( sdResearchManager.only_instance )
+			{
+				sdResearchManager.Close();
+			}
+			else
+			if ( sdCodeEditor.window_instances.length > 0 )
+			{
+				sdCodeEditor.Close( sdCodeEditor.window_instances[ sdCodeEditor.window_instances.length - 1 ] );
 			}
 			else
 			{

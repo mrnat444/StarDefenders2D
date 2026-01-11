@@ -26,6 +26,7 @@ import sdCrystal from './sdCrystal.js';
 import sdGunClass from './sdGunClass.js';
 
 import sdShop from '../client/sdShop.js';
+import sdResearchStation from './sdResearchStation.js';
 
 // More like anything pickup-able
 class sdGun extends sdEntity
@@ -512,7 +513,7 @@ class sdGun extends sdEntity
 		this._combo = 0; // Specifically made for the time shifter blade, this increases rate of fire / swing rate of sword for every hit you make
 		this._combo_timer = 0;// Goes to 0, resets combo when it reaches 0
 		//this.ttl = params.ttl || sdGun.disowned_guns_ttl;
-		this.extra = ( params.extra === undefined ) ? 0 : params.extra; // shard value will be here
+		this.extra = ( params.extra === undefined ) ? 0 : params.extra; // shard value will be here, also build tool unlocked items
 
 		this.sd_filter = ( params.sd_filter === undefined ) ? null : params.sd_filter;
 
@@ -554,6 +555,9 @@ class sdGun extends sdEntity
 		
 		//let has_class = sdGun.classes[ this.class ];
 		this.ResetInheritedGunClassProperties( params );
+
+		if ( sdGun.classes[ this.class ].is_build_gun )
+		this.extra = sdResearchStation.GetDefaultUnlockedItems();
 		
 		this.SetMethod( 'CollisionFiltering', this.CollisionFiltering ); // Here it used for "this" binding so method can be passed to collision logic
 	}
@@ -1712,6 +1716,10 @@ class sdGun extends sdEntity
 			if ( sdWorld.client_side_censorship && this.title_censored )
 			t = sdWorld.CensoredText( t );
 		
+			if ( sdGun.classes[ this.class ].is_build_gun )
+			if ( this.extra instanceof Array && this.extra.length > 0 )
+			t = t + ' ( ' + ( this.extra.length ) + ' unlocks )';
+
 			sdEntity.Tooltip( ctx, t, 0, xx );
 			xx += 8;
 			if ( has_slot )
